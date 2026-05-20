@@ -516,7 +516,7 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       FIT CRITIQUE RESULT 
+       FIT CRITIQUE RESULT
     ══════════════════════════════════════════════════════════════════ */
     .verdict-card {
       background: var(--bg-surface);
@@ -866,17 +866,31 @@
         <button data-mode="bulk">Bulk (laid out)</button>
       </div>
 
-      <div class="photo-zone" id="photo-zone">
-        <div class="photo-zone-icon">
-          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
+      <div id="photo-zone-container" style="display: flex; gap: 12px; width: 100%;">
+        <div class="photo-zone" id="photo-zone" style="flex: 1;">
+          <div class="photo-zone-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <div class="photo-zone-label" id="photo-zone-label">Take or upload photo</div>
+          <div class="photo-zone-sub" id="photo-zone-sub">Tap to start</div>
         </div>
-        <div class="photo-zone-label" id="photo-zone-label">Take or upload photo</div>
-        <div class="photo-zone-sub" id="photo-zone-sub">Tap to start</div>
+
+        <div class="photo-zone" id="photo-zone-b" style="display: none; flex: 1;">
+          <div class="photo-zone-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <div class="photo-zone-label">Option B</div>
+          <div class="photo-zone-sub">Tap to upload</div>
+        </div>
       </div>
       <input type="file" accept="image/*" class="hidden-file" id="file-input">
+      <input type="file" accept="image/*" class="hidden-file" id="file-input-b">
 
       <button id="btn-manual-entry" style="font-size: 13px; font-weight: 600; color: var(--accent); margin-top: -4px; margin-bottom: 8px; text-align: center; width: 100%;">
         Or enter details manually without a photo ⇢
@@ -1037,6 +1051,7 @@ let S = {
   fits: [],                   
   captureMode: 'single',      
   capturedImage: null,        
+  capturedImageB: null,       
   bulkDraftItems: [],         
   editingItem: null,          
   selectedType: null,         
@@ -1349,6 +1364,9 @@ function renderFitScreen(el) {
       <div style="font-size: 17px; font-weight: 600; color: var(--text-2); line-height: 1.5;">
         Take a mirror selfie and get a quick style critique grounded in what's actually in your closet.
       </div>
+      <button class="btn-secondary" id="btn-trigger-compare-mode" style="margin-top:12px; border-color:var(--accent); color:var(--accent);">
+        ⇢ Run an A vs B Option Comparison
+      </button>
       <div style="font-size: 14px; color: var(--text-3); margin-top: 12px; line-height: 1.5;">
         ${closetCount === 0
           ? 'Your closet is empty — critiques will still work, but swap suggestions need items logged. Add a few first.'
@@ -1361,6 +1379,10 @@ function renderFitScreen(el) {
     const id = el.querySelector('[data-fit-id]').dataset.fitId;
     const fit = S.fits.find(f => f.id === id);
     if (fit) showFitDetail(fit);
+  });
+
+  el.querySelector('#btn-trigger-compare-mode')?.addEventListener('click', () => {
+    openCapture('compare');
   });
 }
 
@@ -1423,8 +1445,9 @@ document.getElementById('btn-fab').addEventListener('click', () => {
 // CAPTURE FLOW
 // ═══════════════════════════════════════════════════════════════════
 function openCapture(intent) {
-  S.captureMode = intent === 'fit' ? 'fit' : 'single';
+  S.captureMode = intent === 'fit' ? 'fit' : (intent === 'compare' ? 'compare' : 'single');
   S.capturedImage = null;
+  S.capturedImageB = null;
   S.bulkDraftItems = [];
 
   const titleEl = document.getElementById('capture-title');
@@ -1433,6 +1456,7 @@ function openCapture(intent) {
   const manualBtn = document.getElementById('btn-manual-entry');
   const output = document.getElementById('capture-output');
   const zone = document.getElementById('photo-zone');
+  const zoneB = document.getElementById('photo-zone-b');
   const contextFields = document.getElementById('fit-context-fields');
 
   zone.classList.remove('has-image');
@@ -1449,25 +1473,47 @@ function openCapture(intent) {
   output.innerHTML = '';
   actionBtn.style.display = 'block'; 
 
-  if (intent === 'fit') {
-    titleEl.textContent = "Rate today's fit";
-    if (contextFields) contextFields.style.display = 'flex'; 
-    document.getElementById('fit-context-weather').value = '';
-    document.getElementById('fit-context-event').value = '';
-    document.getElementById('photo-zone-label').textContent = 'Mirror selfie';
-    document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
-    actionBtn.textContent = 'Critique this fit';
+  if (intent === 'compare') {
+    titleEl.textContent = "A vs B Comparison";
+    zoneB.style.display = 'flex';
+    zoneB.classList.remove('has-image');
+    zoneB.innerHTML = `
+      <div class="photo-zone-icon">
+        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <div class="photo-zone-label">Option B</div>
+      <div class="photo-zone-sub">Tap to upload</div>`;
+    document.getElementById('photo-zone-label').textContent = 'Option A';
+    document.getElementById('photo-zone-sub').textContent = 'Tap to upload';
+    actionBtn.textContent = 'Compare Options';
     modeToggle.style.display = 'none';
-    if (manualBtn) manualBtn.style.display = 'none'; 
-  } else {
-    titleEl.textContent = 'Add item';
-    document.getElementById('photo-zone-label').textContent = 'Item photo';
-    document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
-    actionBtn.textContent = 'Analyze item';
-    modeToggle.style.display = 'flex';
-    if (manualBtn) manualBtn.style.display = 'block'; 
-    modeToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === 'single'));
+    if (manualBtn) manualBtn.style.display = 'none';
     if (contextFields) contextFields.style.display = 'none';
+  } else {
+    zoneB.style.display = 'none';
+    if (intent === 'fit') {
+      titleEl.textContent = "Rate today's fit";
+      if (contextFields) contextFields.style.display = 'flex'; 
+      document.getElementById('fit-context-weather').value = '';
+      document.getElementById('fit-context-event').value = '';
+      document.getElementById('photo-zone-label').textContent = 'Mirror selfie';
+      document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
+      actionBtn.textContent = 'Critique this fit';
+      modeToggle.style.display = 'none';
+      if (manualBtn) manualBtn.style.display = 'none'; 
+    } else {
+      titleEl.textContent = 'Add item';
+      document.getElementById('photo-zone-label').textContent = 'Item photo';
+      document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
+      actionBtn.textContent = 'Analyze item';
+      modeToggle.style.display = 'flex';
+      if (manualBtn) manualBtn.style.display = 'block'; 
+      modeToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === 'single'));
+      if (contextFields) contextFields.style.display = 'none';
+    }
   }
 
   actionBtn.disabled = true;
@@ -1514,6 +1560,10 @@ document.getElementById('photo-zone').addEventListener('click', () => {
   document.getElementById('file-input').click();
 });
 
+document.getElementById('photo-zone-b').addEventListener('click', () => {
+  document.getElementById('file-input-b').click();
+});
+
 document.getElementById('file-input').addEventListener('change', async e => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -1526,15 +1576,43 @@ document.getElementById('file-input').addEventListener('change', async e => {
     zone.innerHTML = `
       <img src="${dataURL}">
       <button class="photo-zone-retake">Retake</button>`;
-    zone.querySelector('.photo-zone-retake').addEventListener('click', e => {
-      e.stopPropagation();
+    zone.querySelector('.photo-zone-retake').addEventListener('click', ev => {
+      ev.stopPropagation();
       document.getElementById('file-input').click();
     });
-    document.getElementById('btn-capture-action').disabled = false;
+    
+    if (S.captureMode === 'compare') {
+      if (S.capturedImage && S.capturedImageB) {
+        document.getElementById('btn-capture-action').disabled = false;
+      }
+    } else {
+      document.getElementById('btn-capture-action').disabled = false;
+    }
   } catch(err) {
     console.error(err);
     toast('Image failed — try again');
   }
+});
+
+document.getElementById('file-input-b').addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  e.target.value = '';
+  try {
+    const dataURL = await compressImage(file, 1024);
+    S.capturedImageB = dataURL;
+    const zoneB = document.getElementById('photo-zone-b');
+    zoneB.classList.add('has-image');
+    zoneB.innerHTML = `<img src="${dataURL}"><button class="photo-zone-retake">Retake</button>`;
+    zoneB.querySelector('.photo-zone-retake').addEventListener('click', ev => {
+      ev.stopPropagation();
+      document.getElementById('file-input-b').click();
+    });
+    
+    if (S.capturedImage && S.capturedImageB) {
+      document.getElementById('btn-capture-action').disabled = false;
+    }
+  } catch(err) { toast('Image B failed — try again'); }
 });
 
 document.getElementById('btn-capture-action').addEventListener('click', async () => {
@@ -1543,6 +1621,62 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
   const output = document.getElementById('capture-output');
   btn.disabled = true;
   const originalLabel = btn.textContent;
+
+  if (S.captureMode === 'compare') {
+    if (!S.capturedImageB) return;
+    btn.textContent = 'Analyzing options…';
+    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Weighing option A against option B…</div></div>`;
+    try {
+      const schema = {
+        type: 'OBJECT',
+        properties: {
+          winner: { type: 'STRING', enum: ['A', 'B', 'tie'] },
+          verdict_headline: { type: 'STRING' },
+          why_winner: { type: 'STRING', description: 'Technical design summary explaining why the winning option coordinates better.' },
+          breakdown_A: { type: 'STRING', description: 'Styling mechanics evaluation of look A.' },
+          breakdown_B: { type: 'STRING', description: 'Styling mechanics evaluation of look B.' }
+        },
+        required: ['winner', 'verdict_headline', 'why_winner', 'breakdown_A', 'breakdown_B']
+      };
+
+      const prompt = `You are a critical fashion judge looking at two variations of the same basic outfit. Compare Image A and Image B. Determine which execution functions best based on silhouette composition, proportions, contrast balance, and contextual clean lines. Do not choose arbitrarily; diagnose the technical victory.`;
+
+      const result = await callGemini([
+        { text: prompt },
+        { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(S.capturedImage) } }, 
+        { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(S.capturedImageB) } } 
+      ], schema, 'medium');
+
+      output.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:14px; margin-top:8px;">
+          <div class="verdict-card">
+            <div class="verdict-eyebrow">Winner: Option ${esc(result.winner)}</div>
+            <div class="verdict-headline ${result.winner === 'A' ? 'good' : 'ok'}">${esc(result.verdict_headline)}</div>
+            <div class="analysis-val" style="margin-top:6px;">${esc(result.why_winner)}</div>
+          </div>
+          <div class="verdict-card">
+            <div class="verdict-eyebrow">Option A Breakdown</div>
+            <div class="analysis-val">${esc(result.breakdown_A)}</div>
+          </div>
+          <div class="verdict-card">
+            <div class="verdict-eyebrow">Option B Breakdown</div>
+            <div class="analysis-val">${esc(result.breakdown_B)}</div>
+          </div>
+          <button class="btn-secondary" id="btn-close-compare-output">Done</button>
+        </div>`;
+
+      document.getElementById('btn-close-compare-output').onclick = () => {
+        closeView('view-capture');
+        setScreen('fit');
+      };
+      btn.style.display = 'none';
+    } catch(err) {
+      output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
+    return;
+  }
 
   if (S.captureMode === 'fit') {
     btn.textContent = 'Reading the fit…';
@@ -1797,7 +1931,7 @@ Instructions:
           name: newItem.name,
           color: newItem.color || '',
           notes: 'Auto-detected from selfie log.',
-          isWishlist: false, // FIXED: Explicitly flag as active closet item, NOT wishlist
+          isWishlist: false, 
           dateAdded: Date.now()
         });
         itemsAddedCount++;
@@ -1990,7 +2124,7 @@ function openBulkConfirm() {
   saveBtn.style.marginTop = '8px';
   saveBtn.addEventListener('click', () => {
     S.bulkDraftItems.forEach(it => {
-      it.isWishlist = false; // FIXED: Ensure batch items explicitly default to owned
+      it.isWishlist = false; 
       S.closet.push(it);
     });
     persist();
@@ -2069,7 +2203,7 @@ document.getElementById('btn-save-item').addEventListener('click', () => {
     formality: document.getElementById('item-formality').value.trim(),
     notes: document.getElementById('item-notes').value.trim(),
     image: S.editingItem.image || '',
-    isWishlist: S.editingItem.isWishlist || false, // FIXED: Explicit fallback logic
+    isWishlist: S.editingItem.isWishlist || false, 
     dateAdded: S.editingItem.dateAdded || Date.now(),
   };
   if (!updated.name) { toast('Give the item a name'); return; }
