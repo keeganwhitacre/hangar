@@ -1914,7 +1914,8 @@ ${principleHints}
 Instructions:
 1. Break down components in "currently_wearing".
 2. Critically analyze limitations or styling successes factoring in the specified Weather and Event rules.
-3. In "discovered_items", extract every distinct garment/shoe/accessory you can clearly visually identify from this selfie so they can be saved to their active physical wardrobe portfolio.`;
+3. In "discovered_items", extract every distinct garment/shoe/accessory you can clearly visually identify from this selfie so they can be saved to their active physical wardrobe portfolio.
+4. Under "swaps", ONLY suggest substitutions if the current outfit has a structural flaw or layout deficit that can be actively improved. If the user's current outfit is excellent, well-proportioned, and cohesive, do NOT force a replacement; return an empty array [] for "swaps". Never suggest a closet item swap if you are going to criticize it as a downgrade.`;
 
   const result = await callGemini([
     { text: prompt },
