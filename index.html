@@ -953,6 +953,17 @@
       </div>
 
       <div>
+        <div class="field-label">Style Profile Context</div>
+        <div class="lgroup" style="background: var(--bg-surface); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <textarea class="field" id="set-user-profile" rows="2" placeholder="e.g., 23 year old man, 6'1&quot;, athletic/good shape" style="font-size:14px; padding:10px;"></textarea>
+          <div style="font-size:12px; color:var(--text-3); line-height:1.4; padding:0 2px;">
+            This identity context is passed directly to the style engine so critiques match your exact proportions and frame.
+          </div>
+          <button class="btn-secondary" id="btn-save-profile" style="padding: 8px; font-size: 13px;">Save profile context</button>
+        </div>
+      </div>
+
+      <div>
         <div class="field-label">Gemini API key</div>
         <input class="field" id="set-gemini-key" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size:14px;">
         <div style="font-size:13px; color:var(--text-3); padding:6px 2px; line-height:1.5;">
@@ -1923,6 +1934,8 @@ async function analyzeBulk(imageDataURL) {
 async function analyzeFit(selfieDataURL) {
   const weatherVal = document.getElementById('fit-context-weather')?.value || 'Not Specified';
   const eventVal = document.getElementById('fit-context-event')?.value || 'Not Specified';
+  // If the user hasn't typed anything in settings, default to a standard proportional baseline
+const profileVal = getSetting('userProfile') || "Adult of average height and balanced proportions";
 
   const closetForPrompt = S.closet.map(i => ({
     id: i.id,
@@ -2374,9 +2387,19 @@ document.getElementById('btn-delete-item').addEventListener('click', () => {
 document.getElementById('btn-settings').addEventListener('click', () => {
   document.getElementById('set-theme').value = getSetting('theme') || 'auto';
   document.getElementById('set-gemini-key').value = getSetting('geminiKey') || '';
+  // NEW: Read profile setting out of storage
+  document.getElementById('set-user-profile').value = getSetting('userProfile') || '';
   renderLessonState();
   openView('view-settings');
 });
+
+// NEW: Save profile event listener
+document.getElementById('btn-save-profile').addEventListener('click', () => {
+  const profileText = document.getElementById('set-user-profile').value.trim();
+  setSetting('userProfile', profileText);
+  toast(profileText ? 'Style profile saved!' : 'Profile text cleared');
+});
+  
 document.getElementById('btn-close-settings').addEventListener('click', () => closeView('view-settings'));
 
 document.getElementById('set-theme').addEventListener('change', e => {
@@ -2475,6 +2498,7 @@ document.getElementById('btn-generate-outfit-view').onclick = () => generateOutf
 document.getElementById('btn-close-outfits').onclick = () => closeView('view-outfit-results');
 
 async function generateOutfitsEngine() {
+const profileVal = getSetting('userProfile') || "Adult of average height and balanced proportions";
   // Extract and clean owned clothing items only
   const ownedCloset = S.closet.filter(i => !i.isWishlist).map(i => ({
     id: i.id,
