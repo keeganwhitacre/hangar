@@ -1777,15 +1777,40 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
 
   if (S.captureMode === 'bulk') {
     btn.textContent = 'Analyzing all items…';
-    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Finding all the pieces in the photo…</div></div>`;
+    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Finding and slicing your pieces…</div></div>`;
     try {
       const items = await analyzeBulk(S.capturedImage);
       if (!items.length) throw new Error('No clothing items found in the photo.');
       
+      // Clear out status indicator properties
       btn.textContent = originalLabel;
       btn.disabled = false;
       
-      S.bulkDraftItems = items.map(it => ({ ...it, id: uid(), image: '', isWishlist: false, dateAdded: Date.now() }));
+      // NEW: Map through items sequentially to execute thumbnail image crops asynchronously
+      const processedDrafts = [];
+      for (const it of items) {
+        let croppedThumb = '';
+        if (it.box_2d && it.box_2d.length === 4) {
+          try {
+            croppedThumb = await cropGarmentFromBox(S.capturedImage, it.box_2d);
+          } catch(e) { console.warn("Bulk auto-crop skipped for item", e); }
+        }
+        
+        processedDrafts.push({
+          id: uid(),
+          type: it.type,
+          name: it.name,
+          color: it.color || '',
+          fit: it.fit || '',
+          fabric: it.fabric || '',
+          formality: it.formality || '',
+          image: croppedThumb, // FIXED: Cropped layout thumbnail applied here!
+          isWishlist: false,
+          dateAdded: Date.now()
+        });
+      }
+      
+      S.bulkDraftItems = processedDrafts;
       closeView('view-capture');
       openBulkConfirm();
     } catch(err) {
@@ -1876,8 +1901,14 @@ async function analyzeBulk(imageDataURL) {
         fit:       { type: 'STRING' },
         fabric:    { type: 'STRING' },
         formality: { type: 'STRING' },
+        // NEW: Request normalized coordinates for each flat-laid item
+        box_2d:    { 
+          type: 'ARRAY', 
+          items: { type: 'INTEGER' },
+          description: 'Bounding box for the item formatted as [ymin, xmin, ymax, xmax] normalized 0-1000.'
+        }
       },
-      required: ['type', 'name', 'color']
+      required: ['type', 'name', 'color', 'box_2d']
     }
   };
 
@@ -2159,10 +2190,15 @@ function openBulkConfirm() {
     const card = document.createElement('div');
     card.className = 'bulk-item';
     card.dataset.idx = idx;
-    const letter = item.name?.[0]?.toUpperCase() || '?';
+    
+    // FIXED: Render the newly sliced canvas JPEG thumbnail if it exists
+    const imgThumb = item.image 
+      ? `<img src="${item.image}" style="width:100%; height:100%; object-fit:cover;">`
+      : `<div class="bulk-thumb-letter">${item.name?.[0]?.toUpperCase() || '?'}</div>`;
+
     card.innerHTML = `
       <div class="bulk-thumb">
-        <div class="bulk-thumb-letter">${letter}</div>
+        ${imgThumb}
       </div>
       <div class="bulk-form">
         <input class="bulk-name" placeholder="Name" value="${esc(item.name || '')}">
