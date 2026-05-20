@@ -243,7 +243,13 @@
       position: fixed; z-index: 90; pointer-events: none;
       bottom: 23px; left: 0; width: 100%;
       display: flex; justify-content: center;
-      transition: transform 0.4s var(--spring), opacity 0.3s;
+      transition: transform 0.4s var(--spring), opacity 0.3s var(--spring), visibility 0.3s;
+    }
+    .glass-nav-wrap.hide {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transform: translateY(20px);
     }
     .glass-panel {
       pointer-events: auto;
@@ -1230,10 +1236,18 @@ function openSheet(id) {
   sheetOpen = id;
   document.getElementById(id).classList.add('on');
   document.getElementById('overlay').classList.add('on');
+  
+  // Hide the glass navigation bar while the sheet is active
+  document.querySelector('.glass-nav-wrap')?.classList.add('hide');
 }
+
 function closeSheet(id, clearOv = true) {
   document.getElementById(id)?.classList.remove('on');
-  if (clearOv) document.getElementById('overlay').classList.remove('on');
+  if (clearOv) {
+    document.getElementById('overlay').classList.remove('on');
+    // Bring back the glass navigation bar when the overlay clears out completely
+    document.querySelector('.glass-nav-wrap')?.classList.remove('hide');
+  }
   if (sheetOpen === id) sheetOpen = null;
 }
 function openView(id) { document.getElementById(id).classList.add('on'); }
