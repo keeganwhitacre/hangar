@@ -780,8 +780,9 @@
   <div class="sheet" id="sheet-item">
     <div class="grip-row"><div class="grip"></div></div>
     <div class="sheet-head" style="display:flex; gap:14px; align-items:flex-start;">
-      <div id="item-sheet-thumb" style="width:64px; height:84px; border-radius:8px; overflow:hidden; flex-shrink:0; background:var(--bg-surface2); border:0.5px solid var(--border-md);">
+      <div id="item-sheet-thumb" style="width:64px; height:84px; border-radius:8px; overflow:hidden; flex-shrink:0; background:var(--bg-surface2); border:0.5px solid var(--border-md); position:relative; cursor:pointer;" title="Tap to update photo">
         <img id="item-sheet-img" style="width:100%; height:100%; object-fit:cover;">
+        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); color:#fff; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">EDIT PHOTO</div>
       </div>
       <div style="flex:1; min-width:0;">
         <div class="sheet-title" id="item-sheet-title">Item</div>
@@ -1175,6 +1176,32 @@ async function compressImage(fileOrDataURL, maxWidth = 800, quality = 0.78) {
       r.onerror = reject;
       r.readAsDataURL(fileOrDataURL);
     }
+  });
+}
+
+  async function cropGarmentFromBox(base64Image, box) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const [ymin, xmin, ymax, xmax] = box;
+      
+      // Convert normalized 0-1000 coordinates to actual pixel boundaries
+      const x = (xmin / 1000) * img.width;
+      const y = (ymin / 1000) * img.height;
+      const w = ((xmax - xmin) / 1000) * img.width;
+      const h = ((ymax - ymin) / 1000) * img.height;
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+      
+      // Return compressed JPEG thumbnail
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = base64Image;
   });
 }
 
@@ -1892,9 +1919,14 @@ async function analyzeFit(selfieDataURL) {
           properties: {
             type: { type: 'STRING', enum: ['top', 'bottom', 'outer', 'shoe', 'acc'] },
             name: { type: 'STRING' },
-            color: { type: 'STRING' }
+            color: { type: 'STRING' },
+            box_2d: { 
+              type: 'ARRAY', 
+              items: { type: 'INTEGER' },
+              description: 'Bounding box for the item formatted as [ymin, xmin, ymax, xmax] normalized 0-1000.'
+            }
           },
-          required: ['type', 'name', 'color']
+          required: ['type', 'name', 'color', 'box_2d']
         }
       }
     },
@@ -1922,24 +1954,37 @@ Instructions:
     { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(selfieDataURL) } }
   ], schema, 'medium');
 
+  // Auto-log real pieces seen in selfie with smart auto-cropping
   if (result.discovered_items && result.discovered_items.length > 0) {
     let itemsAddedCount = 0;
-    result.discovered_items.forEach(newItem => {
+    
+    // Using a proper sequential loop to handle the async cropping tasks cleanly
+    for (const newItem of result.discovered_items) {
       if (!S.closet.some(e => e.name.toLowerCase().trim() === newItem.name.toLowerCase().trim())) {
+        
+        let croppedThumb = '';
+        if (newItem.box_2d && newItem.box_2d.length === 4) {
+          try {
+            // Slices out the garment image natively using our canvas math
+            croppedThumb = await cropGarmentFromBox(selfieDataURL, newItem.box_2d);
+          } catch(e) { console.warn("Failed cropping item thumbnail", e); }
+        }
+
         S.closet.push({
           id: uid(),
           type: newItem.type,
           name: newItem.name,
           color: newItem.color || '',
-          notes: 'Auto-detected from selfie log.',
-          isWishlist: false, 
+          notes: 'Auto-detected and cropped from selfie log.',
+          image: croppedThumb, // FIXED: Now populated with a neat structural snippet!
+          isWishlist: false,
           dateAdded: Date.now()
         });
         itemsAddedCount++;
       }
-    });
+    }
     if (itemsAddedCount > 0) {
-      setTimeout(() => toast(`Logged ${itemsAddedCount} new physical clothing item(s) to your closet!`), 800);
+      setTimeout(() => toast(`Logged ${itemsAddedCount} item(s) with custom image crops!`), 800);
     }
   }
 
@@ -2179,6 +2224,33 @@ function openItemSheet(item, isNew = false) {
   document.getElementById('btn-save-item').textContent = isNew ? 'Add to closet' : 'Save';
 
   openSheet('sheet-item');
+
+  // Set up photo modification routing
+  const thumbBox = document.getElementById('item-sheet-thumb');
+  
+  // Clean up any old listeners to prevent leak loops
+  const clonedThumb = thumbBox.cloneNode(true);
+  thumbBox.parentNode.replaceChild(clonedThumb, thumbBox);
+  clonedThumb.style.display = 'block'; // Ensure it stays visible so you can tap to ADD a photo if empty
+
+  clonedThumb.addEventListener('click', () => {
+    // Create a temporary hidden input to trigger the system camera/gallery selector picker
+    const tempPicker = document.createElement('input');
+    tempPicker.type = 'file';
+    tempPicker.accept = 'image/*';
+    
+    tempPicker.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const compressedBase64 = await compressImage(file, 600);
+        S.editingItem.image = compressedBase64;
+        document.getElementById('item-sheet-img').src = compressedBase64;
+        toast('New photo staged! Click Save to apply.');
+      } catch(err) { toast('Photo update failed'); }
+    };
+    tempPicker.click();
+  });
 }
 
 document.getElementById('item-type-seg').addEventListener('click', e => {
