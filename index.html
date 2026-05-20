@@ -405,6 +405,7 @@
     .btn-secondary.danger:active { background: rgba(255, 59, 48, 0.08); }
 
     .lgroup { border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--bg-surface); border: 0.5px solid var(--border); }
+    .lgroup button { width: 100%; text-align: left; }
     .lrow { display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 16px; font-weight: 500; color: var(--text-1); border-bottom: 0.5px solid var(--border); width: 100%; text-align: left; transition: background 0.1s; }
     .lrow:last-child { border-bottom: none; }
     .lrow:active { background: var(--bg-input); }
@@ -515,7 +516,7 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       FIT CRITIQUE RESULT — the centerpiece of the app
+       FIT CRITIQUE RESULT 
     ══════════════════════════════════════════════════════════════════ */
     .verdict-card {
       background: var(--bg-surface);
@@ -875,7 +876,7 @@
         <div class="photo-zone-label" id="photo-zone-label">Take or upload photo</div>
         <div class="photo-zone-sub" id="photo-zone-sub">Tap to start</div>
       </div>
-      <input type="file" accept="image/*" capture="environment" class="hidden-file" id="file-input">
+      <input type="file" accept="image/*" class="hidden-file" id="file-input">
 
       <button id="btn-manual-entry" style="font-size: 13px; font-weight: 600; color: var(--accent); margin-top: -4px; margin-bottom: 8px; text-align: center; width: 100%;">
         Or enter details manually without a photo ⇢
@@ -989,6 +990,12 @@ document.addEventListener('focusout', function(e) {
     }, 50);
   }
 });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -1448,14 +1455,14 @@ function openCapture(intent) {
     document.getElementById('fit-context-weather').value = '';
     document.getElementById('fit-context-event').value = '';
     document.getElementById('photo-zone-label').textContent = 'Mirror selfie';
-    document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
+    document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
     actionBtn.textContent = 'Critique this fit';
     modeToggle.style.display = 'none';
     if (manualBtn) manualBtn.style.display = 'none'; 
   } else {
     titleEl.textContent = 'Add item';
     document.getElementById('photo-zone-label').textContent = 'Item photo';
-    document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
+    document.getElementById('photo-zone-sub').textContent = 'Tap to capture or upload';
     actionBtn.textContent = 'Analyze item';
     modeToggle.style.display = 'flex';
     if (manualBtn) manualBtn.style.display = 'block'; 
@@ -1498,7 +1505,7 @@ document.getElementById('capture-mode-toggle').addEventListener('click', e => {
     actionBtn.textContent = 'Analyze all items';
   } else {
     if (zoneLabel) zoneLabel.textContent = 'Item photo';
-    if (zoneSub) zoneSub.textContent = 'Tap to capture';
+    if (zoneSub) zoneSub.textContent = 'Tap to capture or upload';
     actionBtn.textContent = 'Analyze item';
   }
 });
@@ -1760,15 +1767,20 @@ async function analyzeFit(selfieDataURL) {
     required: ['verdict', 'headline', 'currently_wearing', 'analysis', 'lesson_id', 'lesson_title', 'lesson_body', 'swaps', 'discovered_items']
   };
 
-  const prompt = `You are an expert style coach checking an outfit against environmental real-world constraints.
+  const prompt = `You are an expert style coach checking an outfit against environmental real-world constraints. Find the single greatest failure or asset of this fit and choose the appropriate teaching principle.
 - Current Weather Context: ${weatherVal}
 - Target Event/Setting Context: ${eventVal}
 
-Physical closet inventory:
+Physical owned closet inventory:
 ${JSON.stringify(ownedCloset, null, 2)}
 
-Style menu menu:
-${principleHints}`;
+Style principles menu:
+${principleHints}
+
+Instructions:
+1. Break down components in "currently_wearing".
+2. Critically analyze limitations or styling successes factoring in the specified Weather and Event rules.
+3. In "discovered_items", extract every distinct garment/shoe/accessory you can clearly visually identify from this selfie so they can be saved to their active physical wardrobe portfolio.`;
 
   const result = await callGemini([
     { text: prompt },
@@ -1776,19 +1788,24 @@ ${principleHints}`;
   ], schema, 'medium');
 
   if (result.discovered_items && result.discovered_items.length > 0) {
+    let itemsAddedCount = 0;
     result.discovered_items.forEach(newItem => {
-      if (!S.closet.some(e => e.name.toLowerCase() === newItem.name.toLowerCase())) {
+      if (!S.closet.some(e => e.name.toLowerCase().trim() === newItem.name.toLowerCase().trim())) {
         S.closet.push({
           id: uid(),
           type: newItem.type,
           name: newItem.name,
           color: newItem.color || '',
           notes: 'Auto-detected from selfie log.',
-          isWishlist: false,
+          isWishlist: false, // FIXED: Explicitly flag as active closet item, NOT wishlist
           dateAdded: Date.now()
         });
+        itemsAddedCount++;
       }
     });
+    if (itemsAddedCount > 0) {
+      setTimeout(() => toast(`Logged ${itemsAddedCount} new physical clothing item(s) to your closet!`), 800);
+    }
   }
 
   return {
@@ -1972,7 +1989,10 @@ function openBulkConfirm() {
   saveBtn.textContent = `Save ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}`;
   saveBtn.style.marginTop = '8px';
   saveBtn.addEventListener('click', () => {
-    S.bulkDraftItems.forEach(it => S.closet.push(it));
+    S.bulkDraftItems.forEach(it => {
+      it.isWishlist = false; // FIXED: Ensure batch items explicitly default to owned
+      S.closet.push(it);
+    });
     persist();
     toast(`Added ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}`);
     S.bulkDraftItems = [];
@@ -2049,7 +2069,7 @@ document.getElementById('btn-save-item').addEventListener('click', () => {
     formality: document.getElementById('item-formality').value.trim(),
     notes: document.getElementById('item-notes').value.trim(),
     image: S.editingItem.image || '',
-    isWishlist: S.editingItem.isWishlist || false,
+    isWishlist: S.editingItem.isWishlist || false, // FIXED: Explicit fallback logic
     dateAdded: S.editingItem.dateAdded || Date.now(),
   };
   if (!updated.name) { toast('Give the item a name'); return; }
