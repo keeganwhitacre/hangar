@@ -402,6 +402,7 @@
       transition: background 0.1s;
     }
     .btn-secondary:active { background: var(--bg-input); transform: scale(0.98); }
+    .btn-secondary.danger:active { background: rgba(255, 59, 48, 0.08); }
 
     .lgroup { border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--bg-surface); border: 0.5px solid var(--border); }
     .lrow { display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 16px; font-weight: 500; color: var(--text-1); border-bottom: 0.5px solid var(--border); width: 100%; text-align: left; transition: background 0.1s; }
@@ -720,18 +721,22 @@
     </div>
   </header>
 
-  <!-- Closet filter toolbar -->
-  <div class="toolbar" id="closet-toolbar" style="display:none;">
-    <button class="chip type-chip" data-t="top">Tops</button>
-    <button class="chip type-chip" data-t="bottom">Bottoms</button>
-    <button class="chip type-chip" data-t="outer">Outer</button>
-    <button class="chip type-chip" data-t="shoe">Shoes</button>
-    <button class="chip type-chip" data-t="acc">Accessories</button>
+  <div class="toolbar" id="closet-toolbar" style="display:none; flex-direction: column; gap: 10px;">
+    <div style="display: flex; background: var(--bg-input); padding: 3px; border-radius: 10px; width: 100%;">
+      <button id="toggle-owned" style="flex:1; padding: 6px; font-size: 13px; font-weight: 700; border-radius: 7px; background: var(--bg-surface); color: var(--text-1);" class="active">My Closet</button>
+      <button id="toggle-wishlist" style="flex:1; padding: 6px; font-size: 13px; font-weight: 700; border-radius: 7px; color: var(--text-3);">Wishlist Archetypes</button>
+    </div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+      <button class="chip type-chip" data-t="top">Tops</button>
+      <button class="chip type-chip" data-t="bottom">Bottoms</button>
+      <button class="chip type-chip" data-t="outer">Outer</button>
+      <button class="chip type-chip" data-t="shoe">Shoes</button>
+      <button class="chip type-chip" data-t="acc">Accessories</button>
+    </div>
   </div>
 
   <main id="content-area"></main>
 
-  <!-- Context-aware FAB -->
   <div class="fab-wrap" id="fab-wrap">
     <button class="fab" id="btn-fab">
       <div class="fab-ico" id="fab-ico">
@@ -747,7 +752,6 @@
     </button>
   </div>
 
-  <!-- Glass nav -->
   <div class="glass-nav-wrap">
     <nav class="glass-panel">
       <div class="nav-slot">
@@ -772,9 +776,6 @@
 
   <div class="overlay" id="overlay"></div>
 
-  <!-- ═══════════════════════════════════════════════════
-       ITEM DETAIL SHEET
-       ═══════════════════════════════════════════════════ -->
   <div class="sheet" id="sheet-item">
     <div class="grip-row"><div class="grip"></div></div>
     <div class="sheet-head" style="display:flex; gap:14px; align-items:flex-start;">
@@ -841,23 +842,29 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       CAPTURE VIEW (add item OR rate fit)
-       ═══════════════════════════════════════════════════ -->
   <div class="view" id="view-capture">
     <div class="view-nav">
       <div class="view-title" id="capture-title">Add item</div>
       <button class="btn-cancel" id="btn-close-capture">Cancel</button>
     </div>
     <div class="capture-body">
+      <div id="fit-context-fields" style="display:none; flex-direction:column; gap:10px; background:var(--bg-surface); padding:14px; border-radius:16px; border:0.5px solid var(--border);">
+        <div style="font-weight:700; font-size:12px; text-transform:uppercase; color:var(--text-3); letter-spacing:0.04em;">Outfit Context</div>
+        <div class="field-row-2" style="margin-bottom:0;">
+          <div>
+            <input class="field" id="fit-context-weather" placeholder="e.g., 75°F, Sunny" style="font-size:14px; padding:10px;">
+          </div>
+          <div>
+            <input class="field" id="fit-context-event" placeholder="e.g., Dinner, Office" style="font-size:14px; padding:10px;">
+          </div>
+        </div>
+      </div>
 
-      <!-- Mode toggle (only shown when adding items, not for fit rating) -->
       <div class="mode-toggle" id="capture-mode-toggle" style="display:none;">
         <button data-mode="single" class="active">Single item</button>
         <button data-mode="bulk">Bulk (laid out)</button>
       </div>
 
-      <!-- Photo zone -->
       <div class="photo-zone" id="photo-zone">
         <div class="photo-zone-icon">
           <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
@@ -870,30 +877,25 @@
       </div>
       <input type="file" accept="image/*" capture="environment" class="hidden-file" id="file-input">
 
-      <!-- Action button — depends on context -->
+      <button id="btn-manual-entry" style="font-size: 13px; font-weight: 600; color: var(--accent); margin-top: -4px; margin-bottom: 8px; text-align: center; width: 100%;">
+        Or enter details manually without a photo ⇢
+      </button>
+
       <button class="btn-primary" id="btn-capture-action" disabled>Take a photo first</button>
 
-      <!-- Inline analysis output area -->
       <div id="capture-output"></div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       BULK CONFIRM VIEW
-       ═══════════════════════════════════════════════════ -->
   <div class="view" id="view-bulk-confirm">
     <div class="view-nav">
       <div class="view-title">Confirm items</div>
       <button class="btn-cancel" id="btn-close-bulk">Cancel</button>
     </div>
     <div class="capture-body" id="bulk-confirm-body">
-      <!-- populated dynamically -->
-    </div>
+      </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       SETTINGS VIEW
-       ═══════════════════════════════════════════════════ -->
   <div class="view" id="view-settings">
     <div class="view-nav">
       <div class="view-title">Settings</div>
@@ -969,18 +971,24 @@
 // ═══════════════════════════════════════════════════════════════════
 // VIEWPORT
 // ═══════════════════════════════════════════════════════════════════
-function setVH() {
-  const vh = window.innerHeight * 0.01;
+function setViewportHeight() {
+  const vh = navigator.standalone 
+    ? screen.height * 0.01 
+    : window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
-window.addEventListener('resize', setVH);
-setVH();
+window.addEventListener('resize', setViewportHeight);
+setViewportHeight();
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
+document.addEventListener('focusout', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    setTimeout(() => { 
+      window.scrollTo(0, 0); 
+      document.body.scrollTop = 0; 
+      setViewportHeight(); 
+    }, 50);
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -996,9 +1004,6 @@ const TYPES = {
 const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-// Style principles for the teacher rotation. Each has a stable ID so we
-// can track which you've seen recently and avoid repetition. depth lets
-// us deepen the lesson over time (v2 — for now we use level 1).
 const STYLE_PRINCIPLES = [
   { id: 'proportion',     label: 'Proportion',           gist: 'How vertical/horizontal divisions of the body affect perceived silhouette.' },
   { id: 'color_harmony',  label: 'Color harmony',        gist: 'Whether the palette has a mid-tone anchor, contrast, or sits in one tonal register.' },
@@ -1018,25 +1023,21 @@ const STYLE_PRINCIPLES = [
 // STATE
 // ═══════════════════════════════════════════════════════════════════
 let S = {
-  screen: 'closet',          // 'closet' | 'fit' | 'history'
-  typeFilter: null,           // for closet view
-  closet: [],                 // ClosetItem[]
-  fits: [],                   // FitRating[]
-  // ephemeral capture state
-  captureMode: 'single',      // 'single' | 'bulk' | 'fit'
-  capturedImage: null,        // data URL of the photo on the capture screen
-  bulkDraftItems: [],         // staged items from bulk ingest
-  editingItem: null,          // item currently in detail sheet
-  selectedType: null,         // for the item type segmented control
+  screen: 'closet',          
+  typeFilter: null,           
+  closetTab: 'owned',         
+  closet: [],                 
+  fits: [],                   
+  captureMode: 'single',      
+  capturedImage: null,        
+  bulkDraftItems: [],         
+  editingItem: null,          
+  selectedType: null,         
 };
 
 // ═══════════════════════════════════════════════════════════════════
 // STORAGE
-// Switch from localStorage to IndexedDB? Probably eventually — images
-// will blow past the ~5MB localStorage cap fast. For v1 we store
-// images as compressed data URLs and warn if approaching the limit.
 // ═══════════════════════════════════════════════════════════════════
-// PASTE THIS INSTEAD:
 const DB_NAME = 'FitAppDB';
 const DB_VERSION = 1;
 
@@ -1130,7 +1131,6 @@ function toast(msg) {
   toastTmr = setTimeout(() => el.classList.remove('on'), 2400);
 }
 
-// Compress a File or data URL to a max width for storage efficiency
 async function compressImage(fileOrDataURL, maxWidth = 800, quality = 0.78) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1156,7 +1156,6 @@ async function compressImage(fileOrDataURL, maxWidth = 800, quality = 0.78) {
   });
 }
 
-// Strip data URL prefix to get raw base64
 function dataURLToBase64(dataURL) {
   return dataURL.split(',')[1];
 }
@@ -1196,10 +1195,7 @@ document.getElementById('overlay').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// SCREENS — closet / fit / history
-// The single "screen" state controls (a) what the main area renders
-// and (b) what the FAB does. Keeping these coupled means there's no
-// confusing "press camera while looking at history" mismatch.
+// SCREENS
 // ═══════════════════════════════════════════════════════════════════
 function setScreen(screen) {
   S.screen = screen;
@@ -1219,6 +1215,19 @@ function setScreen(screen) {
     fabText.textContent = 'Add item';
     fabSub.textContent = 'Photo → details';
     fabWrap.style.display = '';
+    
+    document.getElementById('toggle-owned').onclick = () => {
+      S.closetTab = 'owned';
+      document.getElementById('toggle-owned').style.cssText = "flex:1; padding:6px; font-size:13px; font-weight:700; border-radius:7px; background:var(--bg-surface); color:var(--text-1);";
+      document.getElementById('toggle-wishlist').style.cssText = "flex:1; padding:6px; font-size:13px; font-weight:700; border-radius:7px; color:var(--text-3);";
+      render();
+    };
+    document.getElementById('toggle-wishlist').onclick = () => {
+      S.closetTab = 'wishlist';
+      document.getElementById('toggle-wishlist').style.cssText = "flex:1; padding:6px; font-size:13px; font-weight:700; border-radius:7px; background:var(--bg-surface); color:var(--text-1);";
+      document.getElementById('toggle-owned').style.cssText = "flex:1; padding:6px; font-size:13px; font-weight:700; border-radius:7px; color:var(--text-3);";
+      render();
+    };
   } else if (screen === 'fit') {
     titleEl.textContent = "Rate fit";
     toolbarEl.style.display = 'none';
@@ -1248,9 +1257,15 @@ function render() {
 
 function renderCloset(el) {
   let items = S.closet.slice();
+  
+  if (S.closetTab === 'wishlist') {
+    items = items.filter(i => i.isWishlist === true);
+  } else {
+    items = items.filter(i => !i.isWishlist);
+  }
+
   if (S.typeFilter) items = items.filter(i => i.type === S.typeFilter);
 
-  // Update toolbar chip active state
   document.querySelectorAll('.type-chip').forEach(c => {
     const t = c.dataset.t;
     c.classList.toggle('active', S.typeFilter === t);
@@ -1279,7 +1294,6 @@ function renderCloset(el) {
     return;
   }
 
-  // Sort newest first
   items.sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
 
   const grid = document.createElement('div');
@@ -1303,7 +1317,7 @@ function renderCloset(el) {
 
 function renderFitScreen(el) {
   const lastFit = S.fits.slice().sort((a, b) => b.ts - a.ts)[0];
-  const closetCount = S.closet.length;
+  const closetCount = S.closet.filter(i => !i.isWishlist).length;
   let lastFitHTML = '';
   if (lastFit) {
     const v = lastFit.verdict || 'ok';
@@ -1391,7 +1405,7 @@ document.querySelectorAll('.screen-tab').forEach(b => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// FAB — dispatches based on current screen
+// FAB
 // ═══════════════════════════════════════════════════════════════════
 document.getElementById('btn-fab').addEventListener('click', () => {
   if (S.screen === 'closet') openCapture('add');
@@ -1402,20 +1416,18 @@ document.getElementById('btn-fab').addEventListener('click', () => {
 // CAPTURE FLOW
 // ═══════════════════════════════════════════════════════════════════
 function openCapture(intent) {
-  // intent: 'add' (closet ingestion) | 'fit' (rate today's fit)
   S.captureMode = intent === 'fit' ? 'fit' : 'single';
   S.capturedImage = null;
   S.bulkDraftItems = [];
 
   const titleEl = document.getElementById('capture-title');
-  const zoneLabel = document.getElementById('photo-zone-label');
-  const zoneSub = document.getElementById('photo-zone-sub');
   const actionBtn = document.getElementById('btn-capture-action');
   const modeToggle = document.getElementById('capture-mode-toggle');
+  const manualBtn = document.getElementById('btn-manual-entry');
   const output = document.getElementById('capture-output');
   const zone = document.getElementById('photo-zone');
+  const contextFields = document.getElementById('fit-context-fields');
 
-  // Reset zone
   zone.classList.remove('has-image');
   zone.innerHTML = `
     <div class="photo-zone-icon">
@@ -1428,21 +1440,27 @@ function openCapture(intent) {
     <div class="photo-zone-sub" id="photo-zone-sub"></div>`;
 
   output.innerHTML = '';
+  actionBtn.style.display = 'block'; 
 
   if (intent === 'fit') {
     titleEl.textContent = "Rate today's fit";
+    if (contextFields) contextFields.style.display = 'flex'; 
+    document.getElementById('fit-context-weather').value = '';
+    document.getElementById('fit-context-event').value = '';
     document.getElementById('photo-zone-label').textContent = 'Mirror selfie';
     document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
     actionBtn.textContent = 'Critique this fit';
     modeToggle.style.display = 'none';
+    if (manualBtn) manualBtn.style.display = 'none'; 
   } else {
     titleEl.textContent = 'Add item';
     document.getElementById('photo-zone-label').textContent = 'Item photo';
     document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
     actionBtn.textContent = 'Analyze item';
     modeToggle.style.display = 'flex';
-    // reset toggle to single
+    if (manualBtn) manualBtn.style.display = 'block'; 
     modeToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === 'single'));
+    if (contextFields) contextFields.style.display = 'none';
   }
 
   actionBtn.disabled = true;
@@ -1451,7 +1469,21 @@ function openCapture(intent) {
 
 document.getElementById('btn-close-capture').addEventListener('click', () => closeView('view-capture'));
 
-// Mode toggle (single vs bulk)
+document.getElementById('btn-manual-entry')?.addEventListener('click', () => {
+  closeView('view-capture');
+  openItemSheet({
+    type: 'top',
+    name: '',
+    color: '',
+    fit: '',
+    fabric: '',
+    formality: '',
+    image: '',
+    isWishlist: false,
+    dateAdded: Date.now()
+  }, true);
+});
+
 document.getElementById('capture-mode-toggle').addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
@@ -1471,7 +1503,6 @@ document.getElementById('capture-mode-toggle').addEventListener('click', e => {
   }
 });
 
-// Photo zone tap → file picker
 document.getElementById('photo-zone').addEventListener('click', () => {
   document.getElementById('file-input').click();
 });
@@ -1479,7 +1510,7 @@ document.getElementById('photo-zone').addEventListener('click', () => {
 document.getElementById('file-input').addEventListener('change', async e => {
   const file = e.target.files?.[0];
   if (!file) return;
-  e.target.value = ''; // reset so the same file can be picked again
+  e.target.value = ''; 
   try {
     const dataURL = await compressImage(file, S.captureMode === 'fit' ? 1024 : 900);
     S.capturedImage = dataURL;
@@ -1499,7 +1530,6 @@ document.getElementById('file-input').addEventListener('change', async e => {
   }
 });
 
-// Main capture action — branches by mode
 document.getElementById('btn-capture-action').addEventListener('click', async () => {
   if (!S.capturedImage) return;
   const btn = document.getElementById('btn-capture-action');
@@ -1516,7 +1546,7 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
       persist();
       output.innerHTML = renderFitResultHTML(fit);
       attachFitResultHandlers(fit);
-      btn.style.display = 'none';
+      btn.style.display = 'none'; 
     } catch(err) {
       output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
       btn.textContent = 'Try again';
@@ -1531,14 +1561,17 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
     try {
       const parsed = await analyzeItem(S.capturedImage);
       output.innerHTML = '';
-      btn.style.display = 'none';
+      
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+      
       closeView('view-capture');
-      // open detail sheet pre-filled, with the photo attached
       openItemSheet({
         ...parsed,
         image: S.capturedImage,
+        isWishlist: false,
         dateAdded: Date.now(),
-      }, /* isNew */ true);
+      }, true);
     } catch(err) {
       output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
       btn.textContent = 'Try again';
@@ -1553,7 +1586,11 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
     try {
       const items = await analyzeBulk(S.capturedImage);
       if (!items.length) throw new Error('No clothing items found in the photo.');
-      S.bulkDraftItems = items.map(it => ({ ...it, id: uid(), image: '', dateAdded: Date.now() }));
+      
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+      
+      S.bulkDraftItems = items.map(it => ({ ...it, id: uid(), image: '', isWishlist: false, dateAdded: Date.now() }));
       closeView('view-capture');
       openBulkConfirm();
     } catch(err) {
@@ -1566,12 +1603,6 @@ document.getElementById('btn-capture-action').addEventListener('click', async ()
 
 // ═══════════════════════════════════════════════════════════════════
 // GEMINI CALLS
-// Two distinct schemas — ingest vs critique. Both use responseSchema
-// to force structured output and avoid the "model returns prose with
-// JSON inside markdown" failure mode that wastes tokens.
-//
-// Thinking level: 'minimal' for ingest (no reasoning needed),
-// 'medium' for critique (style reasoning is non-trivial).
 // ═══════════════════════════════════════════════════════════════════
 async function callGemini(parts, schema, thinkingLevel = 'minimal') {
   const key = getSetting('geminiKey');
@@ -1606,7 +1637,6 @@ async function callGemini(parts, schema, thinkingLevel = 'minimal') {
   try {
     return JSON.parse(text);
   } catch(e) {
-    // best-effort recovery — find first { or [
     const start = Math.min(...['{', '['].map(c => { const i = text.indexOf(c); return i === -1 ? Infinity : i; }));
     if (!isFinite(start)) throw new Error('Gemini returned malformed JSON.');
     const sliced = text.slice(start);
@@ -1614,7 +1644,6 @@ async function callGemini(parts, schema, thinkingLevel = 'minimal') {
   }
 }
 
-// ── Single item ingest ──
 async function analyzeItem(imageDataURL) {
   const schema = {
     type: 'OBJECT',
@@ -1630,16 +1659,9 @@ async function analyzeItem(imageDataURL) {
   };
 
   const prompt = `You are cataloguing a single garment from a photo for a personal closet database.
-
-Analyze the photo and return a structured description. Rules:
-- "type" must be one of: top, bottom, outer (jackets/coats), shoe, acc (everything else including hats, bags, jewelry, belts, scarves).
-- "name" should be a short descriptive name a person would use to refer to it (e.g. "Charcoal wool trousers", "Cream cable-knit sweater"). Not a brand guess.
-- "color" is the dominant color in plain language ("dark grey charcoal", "off-white cream"). Be specific about undertone.
-- "fit" describes cut/silhouette (slim, relaxed, oversized, tapered, straight, A-line, etc.) — leave empty string if not determinable.
-- "fabric" is your best inference (wool, cotton, denim, leather, knit, etc.) — leave empty if uncertain.
-- "formality" is a one or two word register: "casual", "smart casual", "business casual", "formal", "athletic".
-
-Only describe what you can see. Do not invent details.`;
+- "type" must be one of: top, bottom, outer, shoe, acc.
+- "name" short descriptive name (e.g. "Charcoal wool trousers").
+- "color" dominant color.`;
 
   return callGemini([
     { text: prompt },
@@ -1647,7 +1669,6 @@ Only describe what you can see. Do not invent details.`;
   ], schema, 'minimal');
 }
 
-// ── Bulk ingest ──
 async function analyzeBulk(imageDataURL) {
   const schema = {
     type: 'ARRAY',
@@ -1665,17 +1686,7 @@ async function analyzeBulk(imageDataURL) {
     }
   };
 
-  const prompt = `You are cataloguing MULTIPLE garments from a single photo where items are laid out side by side.
-
-Return an array — one object per distinct clothing item visible in the photo. Same rules as single-item ingest:
-- "type": top, bottom, outer, shoe, or acc.
-- "name": short descriptive name.
-- "color": dominant color with undertone.
-- "fit": cut/silhouette or empty.
-- "fabric": best inference or empty.
-- "formality": "casual" | "smart casual" | "business casual" | "formal" | "athletic".
-
-If two items look very similar (e.g. two black tees), still return them as separate entries. Count carefully. Only describe what you see.`;
+  const prompt = `You are cataloguing MULTIPLE garments laid out side by side. Return an array structure detailing each item.`;
 
   return callGemini([
     { text: prompt },
@@ -1683,11 +1694,10 @@ If two items look very similar (e.g. two black tees), still return them as separ
   ], schema, 'low');
 }
 
-// ── Fit critique ──
 async function analyzeFit(selfieDataURL) {
-  // Build closet JSON for Gemini. We send compact metadata, NOT images — that
-  // would balloon the request. Items are referenced by ID so swaps point to
-  // real items the user owns.
+  const weatherVal = document.getElementById('fit-context-weather')?.value || 'Not Specified';
+  const eventVal = document.getElementById('fit-context-event')?.value || 'Not Specified';
+
   const closetForPrompt = S.closet.map(i => ({
     id: i.id,
     type: i.type,
@@ -1696,94 +1706,91 @@ async function analyzeFit(selfieDataURL) {
     fit: i.fit,
     fabric: i.fabric,
     formality: i.formality,
+    isWishlist: i.isWishlist || false 
   }));
 
-  // Lesson rotation — show Gemini which principles user has seen recently
-  // so it picks something fresh. "Recent" = last 5 critiques.
-  const recentLessons = S.fits
-    .slice()
-    .sort((a, b) => b.ts - a.ts)
-    .slice(0, 5)
-    .map(f => f.lessonId)
-    .filter(Boolean);
-
-  const availablePrinciples = STYLE_PRINCIPLES.filter(p => !recentLessons.includes(p.id));
-  // If we've cycled through all of them, allow re-use (preferring stalest first)
-  const principlePool = availablePrinciples.length ? availablePrinciples : STYLE_PRINCIPLES;
-
-  // Constrain swap target_item_id to actual closet IDs — same trick as Shelf
-  const closetIds = S.closet.map(i => i.id);
-  const lessonIds = principlePool.map(p => p.id);
-
-  // Schema: structured critique with verdict, analysis bullets, a lesson, and swaps
-  const swapSchema = closetIds.length ? {
-    type: 'ARRAY',
-    items: {
-      type: 'OBJECT',
-      properties: {
-        replace_role:   { type: 'STRING', description: 'Which currently-worn piece to swap out — describe by role/position, e.g. "shirt", "shoes".' },
-        with_item_id:   { type: 'STRING', enum: closetIds },
-        reason:         { type: 'STRING' },
-      },
-      required: ['replace_role', 'with_item_id', 'reason']
-    }
-  } : { type: 'ARRAY', items: { type: 'OBJECT', properties: {} } };
+  const ownedCloset = closetForPrompt.filter(i => !i.isWishlist);
+  const principleHints = STYLE_PRINCIPLES.map(p => `- ${p.id}: ${p.label} — ${p.gist}`).join('\n');
+  const allLessonIds = STYLE_PRINCIPLES.map(p => p.id);
 
   const schema = {
     type: 'OBJECT',
     properties: {
       verdict:    { type: 'STRING', enum: ['bad', 'ok', 'good'] },
-      headline:   { type: 'STRING', description: 'Single sentence summary of the fit, max 12 words.' },
-      currently_wearing: {
-        type: 'ARRAY',
-        items: { type: 'STRING' },
-        description: 'What the user is wearing in the selfie, in plain language. One string per item.'
-      },
+      headline:   { type: 'STRING', description: 'Summary line.' },
+      currently_wearing: { type: 'ARRAY', items: { type: 'STRING' } },
       analysis: {
         type: 'ARRAY',
         items: {
           type: 'OBJECT',
-          properties: {
-            principle: { type: 'STRING' },
-            observation: { type: 'STRING' },
-          },
+          properties: { principle: { type: 'STRING' }, observation: { type: 'STRING' } },
           required: ['principle', 'observation']
-        },
-        description: '2-4 specific observations grounded in style principles.'
+        }
       },
-      lesson_id:   { type: 'STRING', enum: lessonIds },
-      lesson_title: { type: 'STRING', description: 'Short title for the principle being taught.' },
-      lesson_body:  { type: 'STRING', description: '2-3 sentences explaining the principle and how it applies to this fit. Educational, not prescriptive.' },
-      swaps: swapSchema,
+      lesson_id:   { type: 'STRING', enum: allLessonIds },
+      lesson_title: { type: 'STRING' },
+      lesson_body:  { type: 'STRING' },
+      swaps: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            replace_role: { type: 'STRING' },
+            owned_item_id: { type: 'STRING' },
+            ideal_item_type: { type: 'STRING', enum: ['top', 'bottom', 'outer', 'shoe', 'acc'] },
+            ideal_item_description: { type: 'STRING' },
+            reason: { type: 'STRING' }
+          },
+          required: ['replace_role', 'owned_item_id', 'ideal_item_type', 'ideal_item_description', 'reason']
+        }
+      },
+      discovered_items: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            type: { type: 'STRING', enum: ['top', 'bottom', 'outer', 'shoe', 'acc'] },
+            name: { type: 'STRING' },
+            color: { type: 'STRING' }
+          },
+          required: ['type', 'name', 'color']
+        }
+      }
     },
-    required: ['verdict', 'headline', 'currently_wearing', 'analysis', 'lesson_id', 'lesson_title', 'lesson_body']
+    required: ['verdict', 'headline', 'currently_wearing', 'analysis', 'lesson_id', 'lesson_title', 'lesson_body', 'swaps', 'discovered_items']
   };
 
-  const principleHints = principlePool.map(p => `- ${p.id}: ${p.label} — ${p.gist}`).join('\n');
+  const prompt = `You are an expert style coach checking an outfit against environmental real-world constraints.
+- Current Weather Context: ${weatherVal}
+- Target Event/Setting Context: ${eventVal}
 
-  const prompt = `You are a style coach analyzing a mirror selfie. Your job is to TEACH style principles, not dictate outfits.
+Physical closet inventory:
+${JSON.stringify(ownedCloset, null, 2)}
 
-The user's closet (referenced by ID — only use these IDs for swap suggestions):
-${JSON.stringify(closetForPrompt, null, 2)}
-
-Style principles you can teach (pick ONE that fits this fit best — these are the ones the user has NOT seen recently):
-${principleHints}
-
-Instructions:
-1. Identify what they're actually wearing from the selfie. List each piece in "currently_wearing".
-2. Verdict: 'bad' = the fit has a clear, fixable problem; 'ok' = competent but unremarkable; 'good' = the fit is working.
-3. Analysis: 2-4 specific observations. Each one names a style principle and describes what you SEE in this specific photo. Be concrete ("the shirt breaks at the widest point of your hip, cutting your silhouette in half") not generic ("the proportions could be better").
-4. Lesson: pick ONE principle from the available pool. lesson_id MUST match one of the enum values. Write a lesson_body that explains the underlying principle so the user learns to see it themselves next time. 2-3 sentences. Teacher tone, not prescriptive.
-5. Swaps: ${closetIds.length ? 'suggest 0-2 swaps using ONLY item IDs from the closet above. with_item_id must exactly match a closet ID. If no swap genuinely improves the fit, return an empty array.' : 'closet is empty — return an empty array.'}
-
-Do not invent items. Do not suggest buying anything. Work only with what they own.`;
+Style menu menu:
+${principleHints}`;
 
   const result = await callGemini([
     { text: prompt },
     { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(selfieDataURL) } }
   ], schema, 'medium');
 
-  // Pack into a FitRating record
+  if (result.discovered_items && result.discovered_items.length > 0) {
+    result.discovered_items.forEach(newItem => {
+      if (!S.closet.some(e => e.name.toLowerCase() === newItem.name.toLowerCase())) {
+        S.closet.push({
+          id: uid(),
+          type: newItem.type,
+          name: newItem.name,
+          color: newItem.color || '',
+          notes: 'Auto-detected from selfie log.',
+          isWishlist: false,
+          dateAdded: Date.now()
+        });
+      }
+    });
+  }
+
   return {
     id: uid(),
     ts: Date.now(),
@@ -1811,20 +1818,36 @@ function renderFitResultHTML(fit) {
       <div class="analysis-val">${esc(a.observation)}</div>
     </div>`).join('');
 
-  const swapsHTML = (fit.swaps || []).map(sw => {
-    const target = S.closet.find(c => c.id === sw.with_item_id);
-    if (!target) return '';
-    const thumb = target.image
-      ? `<img src="${target.image}">`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px;font-weight:700;">${esc(TYPES[target.type]?.label || '?')}</div>`;
+  const swapsHTML = (fit.swaps || []).map((sw, idx) => {
+    let thumb = '';
+    let displayName = '';
+    let wishlistAction = '';
+    
+    if (sw.owned_item_id && sw.owned_item_id !== "") {
+      const target = S.closet.find(c => c.id === sw.owned_item_id);
+      if (target) {
+        displayName = `Closet match: ${target.name}`;
+        thumb = target.image ? `<img src="${target.image}">` : `<div class="tile-ph">✓</div>`;
+      }
+    } 
+    
+    if (!displayName) {
+      displayName = `${sw.ideal_item_description}`;
+      thumb = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--accent);background:rgba(0,122,255,0.08);font-size:16px;font-weight:800;">+</div>`;
+      wishlistAction = `<button class="chip" style="margin-top:8px; border-color:var(--accent); color:var(--accent); font-size:11px; padding:4px 10px;" onclick="window.saveArchetypeToWishlist('${esc(sw.ideal_item_type)}', '${esc(sw.ideal_item_description)}')">+ Add to Wishlist Checklist</button>`;
+    }
+
     return `
-      <div class="swap-card">
-        <div class="swap-arrow">⇢</div>
-        <div class="swap-thumb">${thumb}</div>
-        <div class="swap-body">
-          <div class="swap-name">Replace ${esc(sw.replace_role)} → ${esc(target.name)}</div>
-          <div class="swap-reason">${esc(sw.reason)}</div>
+      <div class="swap-card" style="flex-direction:column; gap:6px; padding:14px;">
+        <div style="display:flex; gap:12px;">
+          <div class="swap-thumb">${thumb}</div>
+          <div class="swap-body">
+            <div class="swap-name">Replace ${esc(sw.replace_role)} with:</div>
+            <div style="font-size:14px; font-weight:700; color:var(--text-1); margin-bottom:2px;">${esc(displayName)}</div>
+            <div class="swap-reason">${esc(sw.reason)}</div>
+          </div>
         </div>
+        ${wishlistAction}
       </div>`;
   }).join('');
 
@@ -1837,23 +1860,26 @@ function renderFitResultHTML(fit) {
       </div>
 
       <div class="verdict-card">
-        <div class="verdict-eyebrow">Why</div>
+        <div class="verdict-eyebrow">Analysis</div>
         <div class="analysis-list">${analysis}</div>
       </div>
 
       <div class="lesson-card">
-        <div class="lesson-eyebrow">Today's principle</div>
+        <div class="lesson-eyebrow">Core Bottleneck Addressed</div>
         <div class="lesson-title">${esc(fit.lessonTitle)}</div>
         <div class="lesson-body">${esc(fit.lessonBody)}</div>
       </div>
 
       ${swapsHTML ? `
         <div>
-          <div class="field-label" style="padding-left: 22px; margin-top: 6px;">Suggested swaps</div>
+          <div class="field-label" style="padding-left: 22px; margin-top: 6px;">Suggested Adjustments</div>
           <div class="swap-list">${swapsHTML}</div>
         </div>` : ''}
 
-      <button class="btn-secondary" id="btn-done-critique" style="margin-top:8px;">Done</button>
+      <div style="display:flex; gap:12px; margin-top:12px;">
+        <button class="btn-secondary" id="btn-done-critique" style="flex:1;">Done</button>
+        <button class="btn-secondary danger" id="btn-delete-critique" style="flex:1; border-color:var(--bad); color:var(--bad); display:none;">Delete Log</button>
+      </div>
     </div>`;
 }
 
@@ -1862,10 +1888,18 @@ function attachFitResultHandlers(fit) {
     closeView('view-capture');
     setScreen('history');
   });
+
+  document.getElementById('btn-delete-critique')?.addEventListener('click', () => {
+    if (!confirm('Permanently delete this critique from your style history?')) return;
+    S.fits = S.fits.filter(f => f.id !== fit.id);
+    persist();
+    closeView('view-capture');
+    toast('Critique deleted');
+    setScreen('history');
+  });
 }
 
 function showFitDetail(fit) {
-  // Reuse the capture view shell to show a saved fit
   S.captureMode = 'fit';
   S.capturedImage = fit.image;
   openView('view-capture');
@@ -1875,7 +1909,13 @@ function showFitDetail(fit) {
   zone.classList.add('has-image');
   zone.innerHTML = `<img src="${fit.image}">`;
   document.getElementById('btn-capture-action').style.display = 'none';
-  document.getElementById('capture-output').innerHTML = renderFitResultHTML(fit);
+  
+  const output = document.getElementById('capture-output');
+  output.innerHTML = renderFitResultHTML(fit);
+  
+  const deleteBtn = document.getElementById('btn-delete-critique');
+  if (deleteBtn) deleteBtn.style.display = 'block';
+  
   attachFitResultHandlers(fit);
 }
 
@@ -1888,7 +1928,7 @@ function openBulkConfirm() {
 
   const intro = document.createElement('div');
   intro.style.cssText = 'font-size:14px; color:var(--text-3); margin-bottom: 6px; line-height: 1.5;';
-  intro.textContent = `Found ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}. Edit any details, then save them all to your closet.`;
+  intro.textContent = `Found ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}. Edit details, then save them all to your closet.`;
   body.appendChild(intro);
 
   S.bulkDraftItems.forEach((item, idx) => {
@@ -2009,6 +2049,7 @@ document.getElementById('btn-save-item').addEventListener('click', () => {
     formality: document.getElementById('item-formality').value.trim(),
     notes: document.getElementById('item-notes').value.trim(),
     image: S.editingItem.image || '',
+    isWishlist: S.editingItem.isWishlist || false,
     dateAdded: S.editingItem.dateAdded || Date.now(),
   };
   if (!updated.name) { toast('Give the item a name'); return; }
@@ -2118,10 +2159,30 @@ function renderLessonState() {
   });
 }
 
+window.saveArchetypeToWishlist = function(type, name) {
+  const isDuplicate = S.closet.some(i => i.isWishlist && i.name.toLowerCase() === name.toLowerCase());
+  if (isDuplicate) {
+    toast('Already on your wishlist!');
+    return;
+  }
+
+  S.closet.push({
+    id: uid(),
+    type: type,
+    name: name,
+    color: 'Target Archetype',
+    notes: 'Suggested by AI Coach to fix outfit deficits.',
+    isWishlist: true,
+    dateAdded: Date.now()
+  });
+  
+  persist();
+  toast('Saved to Wishlist Checklist!');
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════════
-// PASTE THIS AT THE VERY BOTTOM INSTEAD:
 window.addEventListener('DOMContentLoaded', async () => {
   applyTheme();
   await loadData();
