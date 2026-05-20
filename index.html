@@ -733,13 +733,17 @@
       <button id="toggle-owned" style="flex:1; padding: 6px; font-size: 13px; font-weight: 700; border-radius: 7px; background: var(--bg-surface); color: var(--text-1);" class="active">My Closet</button>
       <button id="toggle-wishlist" style="flex:1; padding: 6px; font-size: 13px; font-weight: 700; border-radius: 7px; color: var(--text-3);">Wishlist Archetypes</button>
     </div>
-    <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+   <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
       <button class="chip type-chip" data-t="top">Tops</button>
       <button class="chip type-chip" data-t="bottom">Bottoms</button>
       <button class="chip type-chip" data-t="outer">Outer</button>
       <button class="chip type-chip" data-t="shoe">Shoes</button>
       <button class="chip type-chip" data-t="acc">Accessories</button>
     </div>
+    
+    <button id="btn-generate-outfit-view" class="btn-secondary" style="width:100%; border-color:var(--accent); color:var(--accent); font-weight:700; font-size:13px; padding:8px; margin-top:4px;">
+      ✦ Auto-Generate Costumes & Outfits ⇢
+    </button>
   </div>
 
   <main id="content-area"></main>
@@ -915,6 +919,15 @@
       <button class="btn-cancel" id="btn-close-bulk">Cancel</button>
     </div>
     <div class="capture-body" id="bulk-confirm-body">
+      </div>
+  </div>
+
+  <div class="view" id="view-outfit-results">
+    <div class="view-nav">
+      <div class="view-title">Generated Outfits</div>
+      <button class="btn-cancel" id="btn-close-outfits">Close</button>
+    </div>
+    <div class="capture-body" id="outfit-results-body">
       </div>
   </div>
 
@@ -2420,6 +2433,106 @@ window.saveArchetypeToWishlist = function(type, name) {
   persist();
   toast('Saved to Wishlist Checklist!');
 };
+
+  // Add panel navigation listeners
+document.getElementById('btn-generate-outfit-view').onclick = () => generateOutfitsEngine();
+document.getElementById('btn-close-outfits').onclick = () => closeView('view-outfit-results');
+
+async function generateOutfitsEngine() {
+  // Extract and clean owned clothing items only
+  const ownedCloset = S.closet.filter(i => !i.isWishlist).map(i => ({
+    id: i.id,
+    type: i.type,
+    name: i.name,
+    color: i.color,
+    fit: i.fit,
+    fabric: i.fabric,
+    formality: i.formality
+  }));
+
+  if (ownedCloset.length < 2) {
+    toast("Log at least a few items in your closet first!");
+    return;
+  }
+
+  const body = document.getElementById('outfit-results-body');
+  body.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Mixing colors, textures, and proportions...</div></div>`;
+  openView('view-outfit-results');
+
+  const schema = {
+    type: 'OBJECT',
+    properties: {
+      outfits: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            theme_title: { type: 'STRING' },
+            justification: { type: 'STRING' },
+            item_ids: { 
+              type: 'ARRAY', 
+              items: { type: 'STRING' },
+              description: 'List of specific structural item IDs used in this combination.'
+            }
+          },
+          required: ['theme_title', 'justification', 'item_ids']
+        }
+      }
+    },
+    required: ['outfits']
+  };
+
+  const prompt = `You are a professional capsule wardrobe designer. Look at the user's available physical inventory items below and synthesize exactly 3 distinct outfit combinations. 
+  
+  Each outfit must combine matching item IDs logically based on shape weight, color anchors, and tone registries.
+  
+  Available Items:
+  ${JSON.stringify(ownedCloset, null, 2)}`;
+
+  try {
+    const result = await callGemini([{ text: prompt }], schema, 'medium');
+    body.innerHTML = '';
+
+    if (!result.outfits || result.outfits.length === 0) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-title">No combos found</div></div>`;
+      return;
+    }
+
+    result.outfits.forEach((outfit) => {
+      // Build thumbnail image segments based on referenced IDs
+      const itemsHTML = outfit.item_ids.map(id => {
+        const item = S.closet.find(c => c.id === id);
+        if (!item) return '';
+        const imgTag = item.image 
+          ? `<img src="${item.image}" style="width:44px; height:58px; object-fit:cover; border-radius:6px; border:0.5px solid var(--border-md);">`
+          : `<div style="width:44px; height:58px; background:var(--bg-canvas); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text-3); font-weight:700; border:0.5px solid var(--border-md);">✓</div>`;
+        
+        return `
+          <div style="display:flex; align-items:center; gap:10px; background:var(--bg-canvas); padding:8px; border-radius:10px;">
+            ${imgTag}
+            <div>
+              <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-3);">${esc(TYPES[item.type]?.label)}</div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-1);">${esc(item.name)}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      const card = document.createElement('div');
+      card.className = 'verdict-card';
+      card.style.marginBottom = '12px';
+      card.innerHTML = `
+        <div class="verdict-eyebrow">Look Blueprint</div>
+        <div class="verdict-headline ok" style="font-size:20px; margin-bottom:6px;">${esc(outfit.theme_title)}</div>
+        <div class="analysis-val" style="font-size:13px; line-height:1.45; margin-bottom:12px; color:var(--text-2); font-weight:500;">${esc(outfit.justification)}</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">${itemsHTML}</div>
+      `;
+      body.appendChild(card);
+    });
+
+  } catch (err) {
+    body.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // BOOT
