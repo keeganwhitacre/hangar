@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fit">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <title>Fit</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    /* ══════════════════════════════════════════════════════════════════
+       DESIGN SYSTEM — lifted from Shelf for sibling-app continuity.
+       Same fonts, same surface tokens, same accent semantics.
+       Garment-type accents replace book/game format colors.
+    ══════════════════════════════════════════════════════════════════ */
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", system-ui, sans-serif;
+      --bg-canvas: #f2f2f7;
+      --bg-surface: #ffffff;
+      --bg-surface2: #f8f8f8;
+      --bg-input: rgba(0,0,0,0.04);
+      --bg-overlay: rgba(0,0,0,0.4);
+      --text-1: #000000;
+      --text-2: #3c3c43;
+      --text-3: #8e8e93;
+      --border: rgba(60, 60, 67, 0.12);
+      --border-md: rgba(60, 60, 67, 0.18);
+      --border-str: rgba(60, 60, 67, 0.22);
+      --accent: #007aff;
+      --fab-bg: #000000;
+      --fab-fg: #ffffff;
+      /* Verdict semantics — kept from Shelf's pass/good/loved palette */
+      --bad: #ff3b30;     /* needs work */
+      --ok: #8e8e93;      /* fine */
+      --good: #34c759;    /* working */
+      /* Garment type accents */
+      --type-top: #007aff;
+      --type-bottom: #af52de;
+      --type-outer: #ff9500;
+      --type-shoe: #34c759;
+      --type-acc: #ff2d55;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --spring: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      [data-theme="auto"] {
+        --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-surface2: #2c2c2e;
+        --bg-input: rgba(255,255,255,0.08);
+        --text-1: #ffffff; --text-2: #ebebf5; --text-3: #8e8e93;
+        --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.15); --border-str: rgba(255,255,255,0.22);
+        --accent: #0a84ff;
+        --fab-bg: #ffffff; --fab-fg: #000000;
+        --bad: #ff453a; --ok: #8e8e93; --good: #30d158;
+        --type-top: #0a84ff; --type-bottom: #bf5af2; --type-outer: #ff9f0a;
+        --type-shoe: #30d158; --type-acc: #ff375f;
+      }
+    }
+    [data-theme="dark"] {
+      --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-surface2: #2c2c2e;
+      --bg-input: rgba(255,255,255,0.08);
+      --text-1: #ffffff; --text-2: #ebebf5; --text-3: #8e8e93;
+      --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.15); --border-str: rgba(255,255,255,0.22);
+      --accent: #0a84ff;
+      --fab-bg: #ffffff; --fab-fg: #000000;
+      --bad: #ff453a; --ok: #8e8e93; --good: #30d158;
+      --type-top: #0a84ff; --type-bottom: #bf5af2; --type-outer: #ff9f0a;
+      --type-shoe: #30d158; --type-acc: #ff375f;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { background-color: var(--bg-canvas); }
+    body {
+      font-family: var(--font-sans); font-size: 16px; line-height: 1.55;
+      background: var(--bg-canvas); color: var(--text-1);
+      display: flex; flex-direction: column;
+      height: 100vh; height: calc(var(--vh, 1vh) * 100);
+      width: 100%; overflow: hidden; overscroll-behavior-y: none;
+      -webkit-font-smoothing: antialiased; user-select: none;
+    }
+    body:has(.overlay.on) { overflow: hidden; }
+    button { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+    input, textarea, select { font: inherit; color: inherit; background: transparent; border: none; outline: none; -webkit-user-select: text; user-select: text; }
+    #app { display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; width: 100%; }
+
+    /* ── Header ── */
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: max(var(--safe-top), 24px) 24px 16px;
+      background: transparent; flex-shrink: 0; z-index: 10;
+    }
+    .view-title-h {
+      font-weight: 800; font-size: 34px; letter-spacing: -0.04em;
+      color: var(--text-1);
+    }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .icon-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-2); background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .icon-btn:active { transform: scale(0.92); opacity: 0.8; }
+    .icon-btn svg { width: 18px; height: 18px; stroke-width: 2; }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); margin-bottom: 4px; flex-shrink: 0; transition: background 0.3s; align-self: center;}
+    .sync-dot.syncing { background: var(--type-outer); animation: blink 1s infinite; }
+    .sync-dot.ok { background: var(--good); }
+    @keyframes blink { 50% { opacity: 0.3; } }
+
+    /* ── Toolbar (filter chips for closet) ── */
+    .toolbar { display: flex; gap: 6px; padding: 4px 24px 12px; flex-wrap: wrap; flex-shrink: 0; }
+    .chip {
+      font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+      color: var(--text-2); padding: 6px 14px; border-radius: 16px;
+      border: 0.5px solid var(--border); background: var(--bg-surface);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.15s; white-space: nowrap; cursor: pointer;
+    }
+    .chip.active { color: var(--bg-canvas); border-color: transparent; background: var(--text-1); }
+    .chip.active.t-top { background: var(--type-top); color: #fff; }
+    .chip.active.t-bottom { background: var(--type-bottom); color: #fff; }
+    .chip.active.t-outer { background: var(--type-outer); color: #fff; }
+    .chip.active.t-shoe { background: var(--type-shoe); color: #fff; }
+    .chip.active.t-acc { background: var(--type-acc); color: #fff; }
+
+    /* ── Content ── */
+    #content-area {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: 0 0 calc(160px + var(--safe-bottom));
+    }
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 72px 40px; gap: 6px;
+    }
+    .empty-title { font-weight: 800; font-size: 22px; color: var(--text-2); letter-spacing: -0.01em;}
+    .empty-sub { font-size: 14px; color: var(--text-3); font-weight: 500; text-align: center; line-height: 1.5; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CLOSET GRID
+    ══════════════════════════════════════════════════════════════════ */
+    .closet-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 0 20px;
+    }
+    @media (min-width: 500px) {
+      .closet-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (min-width: 768px) {
+      .closet-grid { grid-template-columns: repeat(5, 1fr); padding: 0; }
+    }
+
+    .closet-tile {
+      position: relative;
+      aspect-ratio: 3/4;
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: fadeUp 0.25s var(--spring) both;
+    }
+    .closet-tile:active { transform: scale(0.96); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tile-ph {
+      width: 100%; height: 100%; display: flex;
+      align-items: center; justify-content: center;
+      color: var(--text-3); opacity: 0.3;
+      background: var(--bg-surface2);
+    }
+
+    .tile-type-pip {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 3px 7px; border-radius: 6px;
+      color: #fff;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .tile-type-pip.top { background: rgba(0,122,255,0.85); }
+    .tile-type-pip.bottom { background: rgba(175,82,222,0.85); }
+    .tile-type-pip.outer { background: rgba(255,149,0,0.85); }
+    .tile-type-pip.shoe { background: rgba(52,199,89,0.85); }
+    .tile-type-pip.acc { background: rgba(255,45,85,0.85); }
+
+    .tile-bottom-fade {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 20px 10px 8px;
+      background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+      color: #fff;
+      font-size: 11px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    img { opacity: 0; animation: imgFadeIn 0.4s ease-out forwards; }
+    @keyframes imgFadeIn { to { opacity: 1; } }
+
+    /* ══════════════════════════════════════════════════════════════════
+       FITS LIST (history of rated outfits)
+    ══════════════════════════════════════════════════════════════════ */
+    .fit-card {
+      display: flex; gap: 14px;
+      padding: 14px; margin: 0 20px 12px;
+      background: var(--bg-surface); border-radius: 18px;
+      border: 0.5px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: fadeUp 0.22s var(--spring) both;
+    }
+    .fit-card:active { transform: scale(0.98); }
+    .fit-thumb {
+      flex-shrink: 0; width: 72px; height: 96px;
+      border-radius: 10px; overflow: hidden;
+      background: var(--bg-surface2);
+      border: 0.5px solid var(--border-md);
+    }
+    .fit-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .fit-body { flex: 1; min-width: 0; }
+    .fit-date { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+    .fit-verdict { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; }
+    .fit-verdict.bad { color: var(--bad); }
+    .fit-verdict.ok { color: var(--text-2); }
+    .fit-verdict.good { color: var(--good); }
+    .fit-lesson { font-size: 13px; font-weight: 500; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       GLASS NAV (3-tab, identical to Shelf)
+    ══════════════════════════════════════════════════════════════════ */
+    .glass-nav-wrap {
+      position: fixed; z-index: 90; pointer-events: none;
+      bottom: 23px; left: 0; width: 100%;
+      display: flex; justify-content: center;
+      transition: transform 0.4s var(--spring), opacity 0.3s;
+    }
+    .glass-panel {
+      pointer-events: auto;
+      width: 90%; max-width: 320px;
+      background: rgba(255,255,255,0.42);
+      backdrop-filter: blur(28px) saturate(210%);
+      -webkit-backdrop-filter: blur(28px) saturate(210%);
+      box-shadow: 0 22px 48px -12px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.06), inset 0 1.5px 0 rgba(255,255,255,0.9);
+      border: 1px solid rgba(255,255,255,0.65);
+      border-radius: 36px; padding: 6px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    [data-theme="dark"] .glass-panel {
+      background: rgba(24,24,26,0.42);
+      box-shadow: 0 22px 48px -12px rgba(0,0,0,0.62), 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+    .nav-slot {
+      flex: 1; position: relative; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-btn {
+      position: absolute;
+      width: 48px; height: 48px; border-radius: 100px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none; color: var(--text-3);
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .nav-btn:active { opacity: 0.8; }
+    .nav-btn.active {
+      width: 58px; height: 58px;
+      background: var(--text-1); color: var(--bg-canvas);
+      transform: translateY(-20px) rotate(3deg);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+    }
+    .nav-btn svg {
+      width: 24px; height: 24px;
+      stroke: currentColor; fill: none; stroke-width: 2.5;
+      stroke-linecap: round; stroke-linejoin: round;
+      transition: all 0.3s;
+    }
+    .nav-btn.active svg { width: 28px; height: 28px; transform: rotate(-3deg); }
+
+    body.scrolling-down .glass-nav-wrap,
+    body.scrolling-down .fab-wrap {
+      transform: translateY(120px) translateZ(0);
+      opacity: 0; pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       FLOATING ACTION (camera/add — context dependent)
+    ══════════════════════════════════════════════════════════════════ */
+    .fab-wrap {
+      position: fixed;
+      bottom: 100px; left: 20px; right: 20px;
+      max-width: 720px; margin: 0 auto;
+      z-index: 40;
+      transition: transform 0.4s var(--spring), opacity 0.3s;
+      pointer-events: none;
+    }
+    .fab {
+      pointer-events: auto;
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,0.42);
+      backdrop-filter: blur(28px) saturate(210%);
+      -webkit-backdrop-filter: blur(28px) saturate(210%);
+      border-radius: 99px;
+      padding: 8px 14px;
+      box-shadow: 0 22px 48px -12px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.06);
+      border: 1px solid rgba(255,255,255,0.65);
+      transition: transform 0.15s;
+    }
+    [data-theme="dark"] .fab {
+      background: rgba(24,24,26,0.42);
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: 0 22px 48px -12px rgba(0,0,0,0.62), 0 4px 16px rgba(0,0,0,0.22);
+    }
+    .fab:active { transform: scale(0.98); }
+    .fab-ico {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--fab-bg); color: var(--fab-fg);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .fab-ico svg { width: 18px; height: 18px; stroke-width: 2.5; }
+    .fab-text { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-1); }
+    .fab-sub { font-size: 12px; font-weight: 500; color: var(--text-3); }
+
+    /* ══════════════════════════════════════════════════════════════════
+       OVERLAY + SHEETS
+    ══════════════════════════════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0; background: var(--bg-overlay);
+      z-index: 50; opacity: 0; pointer-events: none;
+      transition: opacity 0.25s; visibility: hidden;
+    }
+    .overlay.on { opacity: 1; pointer-events: all; visibility: visible; }
+
+    .sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--bg-surface);
+      border-radius: 24px 24px 0 0;
+      z-index: 60;
+      display: flex; flex-direction: column;
+      transform: translateY(100%) translateZ(0);
+      transition: transform 0.38s var(--spring);
+      max-height: 92dvh;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+      width: 100%; max-width: 100vw;
+      overflow-x: hidden; box-sizing: border-box;
+    }
+    .sheet.on { transform: translateY(0) translateZ(0); }
+    .grip-row { display: flex; justify-content: center; padding: 12px 0 2px; flex-shrink: 0; }
+    .grip { width: 40px; height: 5px; border-radius: 3px; background: var(--border-md); }
+    .sheet-head { padding: 14px 24px 12px; flex-shrink: 0; }
+    .sheet-title { font-weight: 800; font-size: 24px; letter-spacing: -0.03em; line-height: 1.2; color: var(--text-1); }
+    .sheet-sub { font-size: 14px; font-weight: 500; color: var(--text-3); letter-spacing: 0.01em; margin-top: 2px; }
+    .sheet-sep { height: 1px; background: var(--border); flex-shrink: 0; }
+    .sheet-scroll {
+      overflow-y: auto; overflow-x: hidden;
+      padding: 16px 24px calc(24px + var(--safe-bottom));
+      flex: 1;
+    }
+
+    /* ── Shared form bits ── */
+    .field-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 7px; padding-left: 2px; }
+    .field {
+      width: 100%; box-sizing: border-box;
+      background: var(--bg-canvas);
+      border: 0.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--text-1); font-size: 16px;
+      padding: 14px 16px;
+      transition: border-color 0.15s;
+      font-family: var(--font-sans);
+    }
+    .field:focus { border-color: var(--accent); }
+    .field-row { margin-bottom: 14px; }
+    .field-row-2 { display: flex; gap: 12px; margin-bottom: 14px; }
+    .field-row-2 > div { flex: 1; }
+    .btn-primary {
+      width: 100%; box-sizing: border-box;
+      background: var(--fab-bg); color: var(--fab-fg);
+      padding: 16px; border-radius: 14px;
+      font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+      transition: opacity 0.15s; margin-bottom: 10px;
+    }
+    .btn-primary:active { opacity: 0.7; transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; }
+    .btn-secondary {
+      width: 100%; box-sizing: border-box;
+      background: var(--bg-surface); border: 0.5px solid var(--border);
+      color: var(--text-1);
+      padding: 14px; border-radius: 14px;
+      font-size: 15px; font-weight: 600;
+      transition: background 0.1s;
+    }
+    .btn-secondary:active { background: var(--bg-input); transform: scale(0.98); }
+
+    .lgroup { border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--bg-surface); border: 0.5px solid var(--border); }
+    .lrow { display: flex; align-items: center; gap: 12px; padding: 14px 16px; font-size: 16px; font-weight: 500; color: var(--text-1); border-bottom: 0.5px solid var(--border); width: 100%; text-align: left; transition: background 0.1s; }
+    .lrow:last-child { border-bottom: none; }
+    .lrow:active { background: var(--bg-input); }
+    .lrow.danger { color: var(--bad); }
+    .lrow-ico { width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .lrow-r { margin-left: auto; color: var(--text-3); }
+
+    /* ── Type segmented control ── */
+    .type-seg {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .tseg {
+      padding: 10px 4px;
+      border-radius: 10px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--bg-surface); border: 0.5px solid var(--border-md);
+      color: var(--text-3);
+      transition: all 0.15s;
+    }
+    .tseg.sel-top { background: var(--type-top); color: #fff; border-color: transparent; }
+    .tseg.sel-bottom { background: var(--type-bottom); color: #fff; border-color: transparent; }
+    .tseg.sel-outer { background: var(--type-outer); color: #fff; border-color: transparent; }
+    .tseg.sel-shoe { background: var(--type-shoe); color: #fff; border-color: transparent; }
+    .tseg.sel-acc { background: var(--type-acc); color: #fff; border-color: transparent; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CAPTURE SCREEN (full-view camera workflow)
+    ══════════════════════════════════════════════════════════════════ */
+    .view {
+      position: fixed; inset: 0;
+      background: var(--bg-canvas);
+      display: flex; flex-direction: column;
+      z-index: 100;
+      transform: translateY(100%);
+      transition: transform 0.38s var(--spring);
+    }
+    .view.on { transform: translateY(0); }
+    .view-nav {
+      display: flex; align-items: center; gap: 12px;
+      padding: max(var(--safe-top), 14px) 24px 14px;
+      flex-shrink: 0;
+    }
+    .view-title {
+      font-weight: 800; font-size: 28px; letter-spacing: -0.03em;
+      line-height: 1; flex: 1; color: var(--text-1);
+    }
+    .btn-cancel { font-size: 16px; font-weight: 600; color: var(--text-2); transition: color 0.15s; }
+    .btn-cancel:active { color: var(--text-1); }
+
+    .capture-body {
+      flex: 1; overflow-y: auto;
+      padding: 0 24px calc(140px + var(--safe-bottom));
+      display: flex; flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Big photo drop/capture zone */
+    .photo-zone {
+      width: 100%;
+      aspect-ratio: 3/4;
+      border-radius: 20px;
+      background: var(--bg-surface);
+      border: 1.5px dashed var(--border-md);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      color: var(--text-3);
+      position: relative; overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .photo-zone:active { background: var(--bg-input); }
+    .photo-zone.has-image { border-style: solid; border-color: var(--border); padding: 0; }
+    .photo-zone img { width: 100%; height: 100%; object-fit: cover; border-radius: 19px; }
+    .photo-zone-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--bg-input);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .photo-zone-label { font-size: 16px; font-weight: 600; color: var(--text-2); }
+    .photo-zone-sub { font-size: 13px; color: var(--text-3); }
+    .photo-zone-retake {
+      position: absolute; top: 12px; right: 12px;
+      padding: 6px 14px; border-radius: 99px;
+      background: rgba(0,0,0,0.6); color: #fff;
+      font-size: 13px; font-weight: 600;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+
+    /* Mode toggle for capture */
+    .mode-toggle {
+      display: flex; background: var(--bg-input);
+      border-radius: 12px; padding: 3px;
+      gap: 3px;
+    }
+    .mode-toggle button {
+      flex: 1; padding: 10px;
+      font-size: 14px; font-weight: 600;
+      color: var(--text-3); border-radius: 9px;
+      transition: all 0.15s;
+    }
+    .mode-toggle button.active {
+      background: var(--bg-surface); color: var(--text-1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       FIT CRITIQUE RESULT — the centerpiece of the app
+    ══════════════════════════════════════════════════════════════════ */
+    .verdict-card {
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+    .verdict-eyebrow {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 8px;
+    }
+    .verdict-headline {
+      font-size: 26px; font-weight: 800;
+      letter-spacing: -0.03em; line-height: 1.15;
+      margin-bottom: 14px;
+    }
+    .verdict-headline.bad { color: var(--bad); }
+    .verdict-headline.ok { color: var(--text-1); }
+    .verdict-headline.good { color: var(--good); }
+
+    .analysis-list {
+      display: flex; flex-direction: column;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .analysis-item {
+      padding-left: 12px;
+      border-left: 2px solid var(--border-md);
+    }
+    .analysis-key {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 4px;
+    }
+    .analysis-val {
+      font-size: 15px; line-height: 1.5;
+      color: var(--text-2);
+      font-weight: 500;
+    }
+
+    .lesson-card {
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+      position: relative;
+    }
+    .lesson-eyebrow {
+      display: inline-block;
+      font-size: 10px; font-weight: 800;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(0,122,255,0.1);
+      padding: 4px 9px; border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    [data-theme="dark"] .lesson-eyebrow { background: rgba(10,132,255,0.18); }
+    .lesson-title {
+      font-size: 20px; font-weight: 800;
+      letter-spacing: -0.02em; line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .lesson-body {
+      font-size: 15px; line-height: 1.55;
+      color: var(--text-2);
+      font-weight: 500;
+    }
+
+    .swap-list {
+      display: flex; flex-direction: column;
+      gap: 10px;
+    }
+    .swap-card {
+      display: flex; gap: 12px;
+      padding: 14px;
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+    .swap-thumb {
+      flex-shrink: 0; width: 60px; height: 80px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--bg-surface2);
+      border: 0.5px solid var(--border-md);
+    }
+    .swap-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .swap-arrow {
+      align-self: center; color: var(--text-3);
+      font-size: 18px; font-weight: 700;
+      padding: 0 4px;
+    }
+    .swap-body { flex: 1; min-width: 0; }
+    .swap-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swap-reason { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       BULK CONFIRM SCREEN
+    ══════════════════════════════════════════════════════════════════ */
+    .bulk-item {
+      display: flex; gap: 12px;
+      padding: 14px;
+      background: var(--bg-surface);
+      border: 0.5px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .bulk-thumb {
+      flex-shrink: 0; width: 60px; height: 80px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--bg-surface2);
+      border: 0.5px solid var(--border-md);
+      position: relative;
+    }
+    .bulk-thumb-letter {
+      width: 100%; height: 100%; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800;
+      color: var(--text-3);
+    }
+    .bulk-form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .bulk-form input {
+      background: var(--bg-canvas);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .bulk-form .type-mini {
+      display: flex; gap: 4px; flex-wrap: wrap;
+    }
+    .bulk-form .type-mini button {
+      font-size: 10px; font-weight: 700;
+      padding: 4px 8px; border-radius: 6px;
+      background: var(--bg-input); color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .bulk-form .type-mini button.sel { background: var(--text-1); color: var(--bg-canvas); }
+    .bulk-remove {
+      align-self: flex-start;
+      color: var(--text-3);
+      padding: 4px;
+    }
+    .bulk-remove:active { color: var(--bad); }
+
+    /* ══════════════════════════════════════════════════════════════════
+       LOADING / STATUS
+    ══════════════════════════════════════════════════════════════════ */
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2.5px solid var(--border-md);
+      border-top-color: var(--text-3);
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-status {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px;
+      padding: 40px 24px;
+      color: var(--text-3);
+    }
+    .loading-label { font-size: 15px; font-weight: 600; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      top: calc(20px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--text-1); color: var(--bg-canvas);
+      font-size: 15px; font-weight: 600;
+      padding: 12px 24px; border-radius: 99px;
+      white-space: nowrap;
+      z-index: 300;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s var(--spring);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Hidden file input */
+    .hidden-file { position: absolute; left: -9999px; opacity: 0; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="view-title-h" id="screen-title">Closet</div>
+    <div class="header-right">
+      <div class="sync-dot" id="sync-dot"></div>
+      <button class="icon-btn" id="btn-settings" title="Settings">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Closet filter toolbar -->
+  <div class="toolbar" id="closet-toolbar" style="display:none;">
+    <button class="chip type-chip" data-t="top">Tops</button>
+    <button class="chip type-chip" data-t="bottom">Bottoms</button>
+    <button class="chip type-chip" data-t="outer">Outer</button>
+    <button class="chip type-chip" data-t="shoe">Shoes</button>
+    <button class="chip type-chip" data-t="acc">Accessories</button>
+  </div>
+
+  <main id="content-area"></main>
+
+  <!-- Context-aware FAB -->
+  <div class="fab-wrap" id="fab-wrap">
+    <button class="fab" id="btn-fab">
+      <div class="fab-ico" id="fab-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+      </div>
+      <div style="flex:1;">
+        <div class="fab-text" id="fab-text">Rate today's fit</div>
+        <div class="fab-sub" id="fab-sub">Selfie → critique</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- Glass nav -->
+  <div class="glass-nav-wrap">
+    <nav class="glass-panel">
+      <div class="nav-slot">
+        <button class="nav-btn screen-tab" data-screen="fit">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+        </button>
+      </div>
+      <div class="nav-slot">
+        <button class="nav-btn screen-tab active" data-screen="closet">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 3h6l1 2h4l1-2h6v6l-3 1v11H6V10L3 9z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="nav-slot">
+        <button class="nav-btn screen-tab" data-screen="history">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ITEM DETAIL SHEET
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet" id="sheet-item">
+    <div class="grip-row"><div class="grip"></div></div>
+    <div class="sheet-head" style="display:flex; gap:14px; align-items:flex-start;">
+      <div id="item-sheet-thumb" style="width:64px; height:84px; border-radius:8px; overflow:hidden; flex-shrink:0; background:var(--bg-surface2); border:0.5px solid var(--border-md);">
+        <img id="item-sheet-img" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div class="sheet-title" id="item-sheet-title">Item</div>
+        <div class="sheet-sub" id="item-sheet-sub"></div>
+      </div>
+    </div>
+    <div class="sheet-sep"></div>
+    <div class="sheet-scroll">
+      <div class="field-row">
+        <div class="field-label">Type</div>
+        <div class="type-seg" id="item-type-seg">
+          <button class="tseg" data-t="top">Top</button>
+          <button class="tseg" data-t="bottom">Bottom</button>
+          <button class="tseg" data-t="outer">Outer</button>
+          <button class="tseg" data-t="shoe">Shoe</button>
+          <button class="tseg" data-t="acc">Acc</button>
+        </div>
+      </div>
+      <div class="field-row-2">
+        <div>
+          <div class="field-label">Name</div>
+          <input class="field" id="item-name" placeholder="Slim grey wool trousers">
+        </div>
+      </div>
+      <div class="field-row-2">
+        <div>
+          <div class="field-label">Color</div>
+          <input class="field" id="item-color" placeholder="Charcoal">
+        </div>
+        <div>
+          <div class="field-label">Fit / cut</div>
+          <input class="field" id="item-fit" placeholder="Slim">
+        </div>
+      </div>
+      <div class="field-row-2">
+        <div>
+          <div class="field-label">Fabric</div>
+          <input class="field" id="item-fabric" placeholder="Wool">
+        </div>
+        <div>
+          <div class="field-label">Formality</div>
+          <input class="field" id="item-formality" placeholder="Smart casual">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Notes</div>
+        <textarea class="field" id="item-notes" rows="2" placeholder="Hem too long, picked up at..."></textarea>
+      </div>
+
+      <button class="btn-primary" id="btn-save-item">Save</button>
+      <div class="lgroup" id="item-delete-wrap" style="display:none;">
+        <button class="lrow danger" id="btn-delete-item">
+          <span class="lrow-ico">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </span>
+          Remove from Closet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       CAPTURE VIEW (add item OR rate fit)
+       ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-capture">
+    <div class="view-nav">
+      <div class="view-title" id="capture-title">Add item</div>
+      <button class="btn-cancel" id="btn-close-capture">Cancel</button>
+    </div>
+    <div class="capture-body">
+
+      <!-- Mode toggle (only shown when adding items, not for fit rating) -->
+      <div class="mode-toggle" id="capture-mode-toggle" style="display:none;">
+        <button data-mode="single" class="active">Single item</button>
+        <button data-mode="bulk">Bulk (laid out)</button>
+      </div>
+
+      <!-- Photo zone -->
+      <div class="photo-zone" id="photo-zone">
+        <div class="photo-zone-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <div class="photo-zone-label" id="photo-zone-label">Take or upload photo</div>
+        <div class="photo-zone-sub" id="photo-zone-sub">Tap to start</div>
+      </div>
+      <input type="file" accept="image/*" capture="environment" class="hidden-file" id="file-input">
+
+      <!-- Action button — depends on context -->
+      <button class="btn-primary" id="btn-capture-action" disabled>Take a photo first</button>
+
+      <!-- Inline analysis output area -->
+      <div id="capture-output"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       BULK CONFIRM VIEW
+       ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-bulk-confirm">
+    <div class="view-nav">
+      <div class="view-title">Confirm items</div>
+      <button class="btn-cancel" id="btn-close-bulk">Cancel</button>
+    </div>
+    <div class="capture-body" id="bulk-confirm-body">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SETTINGS VIEW
+       ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-settings">
+    <div class="view-nav">
+      <div class="view-title">Settings</div>
+      <button class="btn-cancel" id="btn-close-settings">Done</button>
+    </div>
+    <div class="capture-body">
+
+      <div>
+        <div class="field-label">Theme</div>
+        <div class="lgroup">
+          <div class="lrow" style="justify-content:space-between;">
+            <span>Appearance</span>
+            <select id="set-theme" style="background:transparent; border:none; color:var(--text-2); font-size:16px; font-weight:600; outline:none; text-align:right; cursor:pointer;">
+              <option value="auto">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label">Gemini API key</div>
+        <input class="field" id="set-gemini-key" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size:14px;">
+        <div style="font-size:13px; color:var(--text-3); padding:6px 2px; line-height:1.5;">
+          Required for item ingestion and fit critique. Free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--text-2);">aistudio.google.com/apikey</a>.
+        </div>
+        <button class="btn-secondary" id="btn-save-gemini">Save key</button>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <div class="field-label">Data</div>
+        <div class="lgroup">
+          <button class="lrow" id="btn-export">
+            <span class="lrow-ico">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            Export closet + history (JSON)
+          </button>
+          <button class="lrow" id="btn-import">
+            <span class="lrow-ico">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </span>
+            Import backup
+          </button>
+          <button class="lrow danger" id="btn-clear-data">
+            <span class="lrow-ico">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </span>
+            Clear all data
+          </button>
+        </div>
+        <input type="file" accept=".json" class="hidden-file" id="import-input">
+      </div>
+
+      <div>
+        <div class="field-label">Lesson rotation</div>
+        <div style="font-size:13px; color:var(--text-3); padding:2px 2px; line-height:1.5;">
+          Style principles you've learned about recently. Lessons cycle so you keep encountering new angles.
+        </div>
+        <div id="lesson-state" style="margin-top:10px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════
+// VIEWPORT
+// ═══════════════════════════════════════════════════════════════════
+function setVH() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+window.addEventListener('resize', setVH);
+setVH();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════
+const TYPES = {
+  top:    { label: 'Top',      plural: 'Tops' },
+  bottom: { label: 'Bottom',   plural: 'Bottoms' },
+  outer:  { label: 'Outer',    plural: 'Outer' },
+  shoe:   { label: 'Shoe',     plural: 'Shoes' },
+  acc:    { label: 'Acc',      plural: 'Accessories' },
+};
+
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+// Style principles for the teacher rotation. Each has a stable ID so we
+// can track which you've seen recently and avoid repetition. depth lets
+// us deepen the lesson over time (v2 — for now we use level 1).
+const STYLE_PRINCIPLES = [
+  { id: 'proportion',     label: 'Proportion',           gist: 'How vertical/horizontal divisions of the body affect perceived silhouette.' },
+  { id: 'color_harmony',  label: 'Color harmony',        gist: 'Whether the palette has a mid-tone anchor, contrast, or sits in one tonal register.' },
+  { id: 'contrast',       label: 'Value contrast',       gist: 'The light/dark relationship between pieces and what it does to focal point.' },
+  { id: 'formality',      label: 'Formality matching',   gist: 'Whether the formality registers of pieces agree or clash productively.' },
+  { id: 'silhouette',     label: 'Silhouette',           gist: 'The outline created by combined volumes — boxy, tapered, A-line, hourglass.' },
+  { id: 'texture_mix',    label: 'Texture mixing',       gist: 'How fabrics interact: smooth + rough, matte + sheen, structured + drape.' },
+  { id: 'pattern_scale',  label: 'Pattern scale',        gist: 'When patterns share or differ in size and what that does to visual hierarchy.' },
+  { id: 'fit',            label: 'Fit precision',        gist: 'Where garments break, drape, pull, or pool — and what that signals.' },
+  { id: 'layering',       label: 'Layering logic',       gist: 'How visible layers sequence in length, weight, and formality.' },
+  { id: 'focal_point',    label: 'Focal point',          gist: 'Where the eye lands first and whether that placement is intentional.' },
+  { id: 'season_register',label: 'Seasonal register',    gist: 'Whether fabrics and colors read as the current season or fight it.' },
+  { id: 'accessorizing',  label: 'Accessorizing',        gist: 'When accessories complete a look vs. clutter the silhouette.' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let S = {
+  screen: 'closet',          // 'closet' | 'fit' | 'history'
+  typeFilter: null,           // for closet view
+  closet: [],                 // ClosetItem[]
+  fits: [],                   // FitRating[]
+  // ephemeral capture state
+  captureMode: 'single',      // 'single' | 'bulk' | 'fit'
+  capturedImage: null,        // data URL of the photo on the capture screen
+  bulkDraftItems: [],         // staged items from bulk ingest
+  editingItem: null,          // item currently in detail sheet
+  selectedType: null,         // for the item type segmented control
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STORAGE
+// Switch from localStorage to IndexedDB? Probably eventually — images
+// will blow past the ~5MB localStorage cap fast. For v1 we store
+// images as compressed data URLs and warn if approaching the limit.
+// ═══════════════════════════════════════════════════════════════════
+// PASTE THIS INSTEAD:
+const DB_NAME = 'FitAppDB';
+const DB_VERSION = 1;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('state')) {
+        db.createObjectStore('state');
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function loadData() {
+  try {
+    const db = await initDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(['state'], 'readonly');
+      const store = transaction.objectStore('state');
+      const request = store.get('app_state');
+      request.onsuccess = () => {
+        const d = request.result;
+        if (d) {
+          S.closet = d.closet || [];
+          S.fits = d.fits || [];
+        }
+        const dot = document.getElementById('sync-dot');
+        if (dot) dot.className = 'sync-dot ok';
+        resolve();
+      };
+      request.onerror = () => resolve();
+    });
+  } catch(e) { console.warn('load failed', e); }
+}
+
+let saveTmr;
+function persist() {
+  const dot = document.getElementById('sync-dot');
+  if (dot) dot.className = 'sync-dot syncing';
+  clearTimeout(saveTmr);
+  saveTmr = setTimeout(async () => {
+    try {
+      const db = await initDB();
+      const transaction = db.transaction(['state'], 'readwrite');
+      const store = transaction.objectStore('state');
+      const request = store.put({ closet: S.closet, fits: S.fits }, 'app_state');
+      request.onsuccess = () => { if (dot) dot.className = 'sync-dot ok'; };
+    } catch(e) { console.warn('persist failed', e); }
+  }, 300);
+}
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem('fit_settings') || '{}'); } catch { return {}; }
+}
+function saveSettings(s) { localStorage.setItem('fit_settings', JSON.stringify(s)); }
+function getSetting(k) { return loadSettings()[k] || ''; }
+function setSetting(k, v) { const s = loadSettings(); s[k] = v; saveSettings(s); }
+
+function applyTheme() {
+  const t = getSetting('theme') || 'auto';
+  document.documentElement.setAttribute('data-theme', t);
+  const sel = document.getElementById('set-theme');
+  if (sel) sel.value = t;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function fmtDate(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('on'), 2400);
+}
+
+// Compress a File or data URL to a max width for storage efficiency
+async function compressImage(fileOrDataURL, maxWidth = 800, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    if (typeof fileOrDataURL === 'string') {
+      img.src = fileOrDataURL;
+    } else {
+      const r = new FileReader();
+      r.onload = () => { img.src = r.result; };
+      r.onerror = reject;
+      r.readAsDataURL(fileOrDataURL);
+    }
+  });
+}
+
+// Strip data URL prefix to get raw base64
+function dataURLToBase64(dataURL) {
+  return dataURL.split(',')[1];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCROLL HIDE
+// ═══════════════════════════════════════════════════════════════════
+const contentArea = document.getElementById('content-area');
+let lastScrollY = 0;
+contentArea.addEventListener('scroll', () => {
+  const y = contentArea.scrollTop;
+  if (y > lastScrollY && y > 50) document.body.classList.add('scrolling-down');
+  else if (y < lastScrollY || y <= 50) document.body.classList.remove('scrolling-down');
+  lastScrollY = y;
+}, { passive: true });
+
+// ═══════════════════════════════════════════════════════════════════
+// SHEET / VIEW
+// ═══════════════════════════════════════════════════════════════════
+let sheetOpen = null;
+function openSheet(id) {
+  if (sheetOpen && sheetOpen !== id) closeSheet(sheetOpen, false);
+  sheetOpen = id;
+  document.getElementById(id).classList.add('on');
+  document.getElementById('overlay').classList.add('on');
+}
+function closeSheet(id, clearOv = true) {
+  document.getElementById(id)?.classList.remove('on');
+  if (clearOv) document.getElementById('overlay').classList.remove('on');
+  if (sheetOpen === id) sheetOpen = null;
+}
+function openView(id) { document.getElementById(id).classList.add('on'); }
+function closeView(id) { document.getElementById(id).classList.remove('on'); }
+
+document.getElementById('overlay').addEventListener('click', () => {
+  if (sheetOpen) closeSheet(sheetOpen);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SCREENS — closet / fit / history
+// The single "screen" state controls (a) what the main area renders
+// and (b) what the FAB does. Keeping these coupled means there's no
+// confusing "press camera while looking at history" mismatch.
+// ═══════════════════════════════════════════════════════════════════
+function setScreen(screen) {
+  S.screen = screen;
+  document.querySelectorAll('.screen-tab').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
+
+  const titleEl = document.getElementById('screen-title');
+  const toolbarEl = document.getElementById('closet-toolbar');
+  const fabIcon = document.getElementById('fab-ico');
+  const fabText = document.getElementById('fab-text');
+  const fabSub = document.getElementById('fab-sub');
+  const fabWrap = document.getElementById('fab-wrap');
+
+  if (screen === 'closet') {
+    titleEl.textContent = 'Closet';
+    toolbarEl.style.display = S.closet.length ? 'flex' : 'none';
+    fabIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    fabText.textContent = 'Add item';
+    fabSub.textContent = 'Photo → details';
+    fabWrap.style.display = '';
+  } else if (screen === 'fit') {
+    titleEl.textContent = "Rate fit";
+    toolbarEl.style.display = 'none';
+    fabIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+    fabText.textContent = 'Take selfie';
+    fabSub.textContent = "Today's fit";
+    fabWrap.style.display = '';
+  } else if (screen === 'history') {
+    titleEl.textContent = 'History';
+    toolbarEl.style.display = 'none';
+    fabWrap.style.display = 'none';
+  }
+
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════
+function render() {
+  const el = document.getElementById('content-area');
+  el.innerHTML = '';
+  if (S.screen === 'closet') renderCloset(el);
+  else if (S.screen === 'fit') renderFitScreen(el);
+  else if (S.screen === 'history') renderHistory(el);
+}
+
+function renderCloset(el) {
+  let items = S.closet.slice();
+  if (S.typeFilter) items = items.filter(i => i.type === S.typeFilter);
+
+  // Update toolbar chip active state
+  document.querySelectorAll('.type-chip').forEach(c => {
+    const t = c.dataset.t;
+    c.classList.toggle('active', S.typeFilter === t);
+    c.classList.toggle('t-top', S.typeFilter === t && t === 'top');
+    c.classList.toggle('t-bottom', S.typeFilter === t && t === 'bottom');
+    c.classList.toggle('t-outer', S.typeFilter === t && t === 'outer');
+    c.classList.toggle('t-shoe', S.typeFilter === t && t === 'shoe');
+    c.classList.toggle('t-acc', S.typeFilter === t && t === 'acc');
+  });
+
+  if (!S.closet.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-title">Your closet is empty</div>
+        <div class="empty-sub">Tap the camera below to add your first piece.<br>One at a time, or bulk if you lay several out.</div>
+      </div>`;
+    return;
+  }
+
+  if (!items.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-title">No items in this category</div>
+        <div class="empty-sub">Tap a filter chip again to clear it.</div>
+      </div>`;
+    return;
+  }
+
+  // Sort newest first
+  items.sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
+
+  const grid = document.createElement('div');
+  grid.className = 'closet-grid';
+  items.forEach((item, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'closet-tile';
+    tile.style.animationDelay = `${Math.min(idx * 12, 180)}ms`;
+    const imgPart = item.image
+      ? `<img class="tile-img" src="${item.image}" alt="${esc(item.name)}">`
+      : `<div class="tile-ph"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 4l3 3v13H5V7l3-3h2l2 2h2l2-2z"/></svg></div>`;
+    tile.innerHTML = `
+      ${imgPart}
+      <div class="tile-type-pip ${item.type}">${TYPES[item.type]?.label || '?'}</div>
+      <div class="tile-bottom-fade">${esc(item.name || item.color || 'Item')}</div>`;
+    tile.addEventListener('click', () => openItemSheet(item));
+    grid.appendChild(tile);
+  });
+  el.appendChild(grid);
+}
+
+function renderFitScreen(el) {
+  const lastFit = S.fits.slice().sort((a, b) => b.ts - a.ts)[0];
+  const closetCount = S.closet.length;
+  let lastFitHTML = '';
+  if (lastFit) {
+    const v = lastFit.verdict || 'ok';
+    lastFitHTML = `
+      <div style="padding: 0 20px;">
+        <div class="field-label" style="margin-top: 8px;">Last critique</div>
+        <div class="fit-card" data-fit-id="${lastFit.id}">
+          <div class="fit-thumb">
+            ${lastFit.image ? `<img src="${lastFit.image}">` : ''}
+          </div>
+          <div class="fit-body">
+            <div class="fit-date">${fmtTime(lastFit.ts)}</div>
+            <div class="fit-verdict ${v}">${esc(lastFit.headline || '—')}</div>
+            <div class="fit-lesson">${esc(lastFit.lessonBody || '')}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div style="padding: 24px 24px 8px;">
+      <div style="font-size: 17px; font-weight: 600; color: var(--text-2); line-height: 1.5;">
+        Take a mirror selfie and get a quick style critique grounded in what's actually in your closet.
+      </div>
+      <div style="font-size: 14px; color: var(--text-3); margin-top: 12px; line-height: 1.5;">
+        ${closetCount === 0
+          ? 'Your closet is empty — critiques will still work, but swap suggestions need items logged. Add a few first.'
+          : `${closetCount} item${closetCount === 1 ? '' : 's'} in closet for swap suggestions.`}
+      </div>
+    </div>
+    ${lastFitHTML}`;
+
+  el.querySelector('[data-fit-id]')?.addEventListener('click', () => {
+    const id = el.querySelector('[data-fit-id]').dataset.fitId;
+    const fit = S.fits.find(f => f.id === id);
+    if (fit) showFitDetail(fit);
+  });
+}
+
+function renderHistory(el) {
+  if (!S.fits.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-title">No fits rated yet</div>
+        <div class="empty-sub">Switch to the Fit tab and take a selfie to start building your style log.</div>
+      </div>`;
+    return;
+  }
+  const fits = S.fits.slice().sort((a, b) => b.ts - a.ts);
+  fits.forEach((fit, idx) => {
+    const card = document.createElement('div');
+    card.className = 'fit-card';
+    card.style.animationDelay = `${Math.min(idx * 12, 180)}ms`;
+    const v = fit.verdict || 'ok';
+    card.innerHTML = `
+      <div class="fit-thumb">
+        ${fit.image ? `<img src="${fit.image}">` : ''}
+      </div>
+      <div class="fit-body">
+        <div class="fit-date">${fmtTime(fit.ts)}</div>
+        <div class="fit-verdict ${v}">${esc(fit.headline || '—')}</div>
+        <div class="fit-lesson">${esc(fit.lessonBody || '')}</div>
+      </div>`;
+    card.addEventListener('click', () => showFitDetail(fit));
+    el.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOOLBAR
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('closet-toolbar').addEventListener('click', e => {
+  const chip = e.target.closest('.type-chip');
+  if (!chip) return;
+  const t = chip.dataset.t;
+  S.typeFilter = S.typeFilter === t ? null : t;
+  render();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.screen-tab').forEach(b => {
+  b.addEventListener('click', () => setScreen(b.dataset.screen));
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// FAB — dispatches based on current screen
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('btn-fab').addEventListener('click', () => {
+  if (S.screen === 'closet') openCapture('add');
+  else if (S.screen === 'fit') openCapture('fit');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// CAPTURE FLOW
+// ═══════════════════════════════════════════════════════════════════
+function openCapture(intent) {
+  // intent: 'add' (closet ingestion) | 'fit' (rate today's fit)
+  S.captureMode = intent === 'fit' ? 'fit' : 'single';
+  S.capturedImage = null;
+  S.bulkDraftItems = [];
+
+  const titleEl = document.getElementById('capture-title');
+  const zoneLabel = document.getElementById('photo-zone-label');
+  const zoneSub = document.getElementById('photo-zone-sub');
+  const actionBtn = document.getElementById('btn-capture-action');
+  const modeToggle = document.getElementById('capture-mode-toggle');
+  const output = document.getElementById('capture-output');
+  const zone = document.getElementById('photo-zone');
+
+  // Reset zone
+  zone.classList.remove('has-image');
+  zone.innerHTML = `
+    <div class="photo-zone-icon">
+      <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </div>
+    <div class="photo-zone-label" id="photo-zone-label"></div>
+    <div class="photo-zone-sub" id="photo-zone-sub"></div>`;
+
+  output.innerHTML = '';
+
+  if (intent === 'fit') {
+    titleEl.textContent = "Rate today's fit";
+    document.getElementById('photo-zone-label').textContent = 'Mirror selfie';
+    document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
+    actionBtn.textContent = 'Critique this fit';
+    modeToggle.style.display = 'none';
+  } else {
+    titleEl.textContent = 'Add item';
+    document.getElementById('photo-zone-label').textContent = 'Item photo';
+    document.getElementById('photo-zone-sub').textContent = 'Tap to capture';
+    actionBtn.textContent = 'Analyze item';
+    modeToggle.style.display = 'flex';
+    // reset toggle to single
+    modeToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === 'single'));
+  }
+
+  actionBtn.disabled = true;
+  openView('view-capture');
+}
+
+document.getElementById('btn-close-capture').addEventListener('click', () => closeView('view-capture'));
+
+// Mode toggle (single vs bulk)
+document.getElementById('capture-mode-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#capture-mode-toggle button').forEach(b => b.classList.toggle('active', b === btn));
+  S.captureMode = btn.dataset.mode;
+  const actionBtn = document.getElementById('btn-capture-action');
+  const zoneLabel = document.getElementById('photo-zone-label');
+  const zoneSub = document.getElementById('photo-zone-sub');
+  if (S.captureMode === 'bulk') {
+    if (zoneLabel) zoneLabel.textContent = 'Items laid out';
+    if (zoneSub) zoneSub.textContent = 'Photograph multiple pieces at once';
+    actionBtn.textContent = 'Analyze all items';
+  } else {
+    if (zoneLabel) zoneLabel.textContent = 'Item photo';
+    if (zoneSub) zoneSub.textContent = 'Tap to capture';
+    actionBtn.textContent = 'Analyze item';
+  }
+});
+
+// Photo zone tap → file picker
+document.getElementById('photo-zone').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  e.target.value = ''; // reset so the same file can be picked again
+  try {
+    const dataURL = await compressImage(file, S.captureMode === 'fit' ? 1024 : 900);
+    S.capturedImage = dataURL;
+    const zone = document.getElementById('photo-zone');
+    zone.classList.add('has-image');
+    zone.innerHTML = `
+      <img src="${dataURL}">
+      <button class="photo-zone-retake">Retake</button>`;
+    zone.querySelector('.photo-zone-retake').addEventListener('click', e => {
+      e.stopPropagation();
+      document.getElementById('file-input').click();
+    });
+    document.getElementById('btn-capture-action').disabled = false;
+  } catch(err) {
+    console.error(err);
+    toast('Image failed — try again');
+  }
+});
+
+// Main capture action — branches by mode
+document.getElementById('btn-capture-action').addEventListener('click', async () => {
+  if (!S.capturedImage) return;
+  const btn = document.getElementById('btn-capture-action');
+  const output = document.getElementById('capture-output');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+
+  if (S.captureMode === 'fit') {
+    btn.textContent = 'Reading the fit…';
+    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Looking at your fit and your closet…</div></div>`;
+    try {
+      const fit = await analyzeFit(S.capturedImage);
+      S.fits.push(fit);
+      persist();
+      output.innerHTML = renderFitResultHTML(fit);
+      attachFitResultHandlers(fit);
+      btn.style.display = 'none';
+    } catch(err) {
+      output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  if (S.captureMode === 'single') {
+    btn.textContent = 'Analyzing…';
+    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Identifying the piece…</div></div>`;
+    try {
+      const parsed = await analyzeItem(S.capturedImage);
+      output.innerHTML = '';
+      btn.style.display = 'none';
+      closeView('view-capture');
+      // open detail sheet pre-filled, with the photo attached
+      openItemSheet({
+        ...parsed,
+        image: S.capturedImage,
+        dateAdded: Date.now(),
+      }, /* isNew */ true);
+    } catch(err) {
+      output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  if (S.captureMode === 'bulk') {
+    btn.textContent = 'Analyzing all items…';
+    output.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Finding all the pieces in the photo…</div></div>`;
+    try {
+      const items = await analyzeBulk(S.capturedImage);
+      if (!items.length) throw new Error('No clothing items found in the photo.');
+      S.bulkDraftItems = items.map(it => ({ ...it, id: uid(), image: '', dateAdded: Date.now() }));
+      closeView('view-capture');
+      openBulkConfirm();
+    } catch(err) {
+      output.innerHTML = `<div class="loading-status" style="color:var(--bad);">${esc(err.message)}</div>`;
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// GEMINI CALLS
+// Two distinct schemas — ingest vs critique. Both use responseSchema
+// to force structured output and avoid the "model returns prose with
+// JSON inside markdown" failure mode that wastes tokens.
+//
+// Thinking level: 'minimal' for ingest (no reasoning needed),
+// 'medium' for critique (style reasoning is non-trivial).
+// ═══════════════════════════════════════════════════════════════════
+async function callGemini(parts, schema, thinkingLevel = 'minimal') {
+  const key = getSetting('geminiKey');
+  if (!key) throw new Error('Add a Gemini API key in Settings first.');
+
+  const payload = {
+    contents: [{ parts }],
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      thinkingConfig: { thinkingLevel },
+    }
+  };
+
+  const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Gemini API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini returned empty response.');
+
+  try {
+    return JSON.parse(text);
+  } catch(e) {
+    // best-effort recovery — find first { or [
+    const start = Math.min(...['{', '['].map(c => { const i = text.indexOf(c); return i === -1 ? Infinity : i; }));
+    if (!isFinite(start)) throw new Error('Gemini returned malformed JSON.');
+    const sliced = text.slice(start);
+    return JSON.parse(sliced);
+  }
+}
+
+// ── Single item ingest ──
+async function analyzeItem(imageDataURL) {
+  const schema = {
+    type: 'OBJECT',
+    properties: {
+      type:      { type: 'STRING', enum: ['top', 'bottom', 'outer', 'shoe', 'acc'] },
+      name:      { type: 'STRING' },
+      color:     { type: 'STRING' },
+      fit:       { type: 'STRING' },
+      fabric:    { type: 'STRING' },
+      formality: { type: 'STRING' },
+    },
+    required: ['type', 'name', 'color']
+  };
+
+  const prompt = `You are cataloguing a single garment from a photo for a personal closet database.
+
+Analyze the photo and return a structured description. Rules:
+- "type" must be one of: top, bottom, outer (jackets/coats), shoe, acc (everything else including hats, bags, jewelry, belts, scarves).
+- "name" should be a short descriptive name a person would use to refer to it (e.g. "Charcoal wool trousers", "Cream cable-knit sweater"). Not a brand guess.
+- "color" is the dominant color in plain language ("dark grey charcoal", "off-white cream"). Be specific about undertone.
+- "fit" describes cut/silhouette (slim, relaxed, oversized, tapered, straight, A-line, etc.) — leave empty string if not determinable.
+- "fabric" is your best inference (wool, cotton, denim, leather, knit, etc.) — leave empty if uncertain.
+- "formality" is a one or two word register: "casual", "smart casual", "business casual", "formal", "athletic".
+
+Only describe what you can see. Do not invent details.`;
+
+  return callGemini([
+    { text: prompt },
+    { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(imageDataURL) } }
+  ], schema, 'minimal');
+}
+
+// ── Bulk ingest ──
+async function analyzeBulk(imageDataURL) {
+  const schema = {
+    type: 'ARRAY',
+    items: {
+      type: 'OBJECT',
+      properties: {
+        type:      { type: 'STRING', enum: ['top', 'bottom', 'outer', 'shoe', 'acc'] },
+        name:      { type: 'STRING' },
+        color:     { type: 'STRING' },
+        fit:       { type: 'STRING' },
+        fabric:    { type: 'STRING' },
+        formality: { type: 'STRING' },
+      },
+      required: ['type', 'name', 'color']
+    }
+  };
+
+  const prompt = `You are cataloguing MULTIPLE garments from a single photo where items are laid out side by side.
+
+Return an array — one object per distinct clothing item visible in the photo. Same rules as single-item ingest:
+- "type": top, bottom, outer, shoe, or acc.
+- "name": short descriptive name.
+- "color": dominant color with undertone.
+- "fit": cut/silhouette or empty.
+- "fabric": best inference or empty.
+- "formality": "casual" | "smart casual" | "business casual" | "formal" | "athletic".
+
+If two items look very similar (e.g. two black tees), still return them as separate entries. Count carefully. Only describe what you see.`;
+
+  return callGemini([
+    { text: prompt },
+    { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(imageDataURL) } }
+  ], schema, 'low');
+}
+
+// ── Fit critique ──
+async function analyzeFit(selfieDataURL) {
+  // Build closet JSON for Gemini. We send compact metadata, NOT images — that
+  // would balloon the request. Items are referenced by ID so swaps point to
+  // real items the user owns.
+  const closetForPrompt = S.closet.map(i => ({
+    id: i.id,
+    type: i.type,
+    name: i.name,
+    color: i.color,
+    fit: i.fit,
+    fabric: i.fabric,
+    formality: i.formality,
+  }));
+
+  // Lesson rotation — show Gemini which principles user has seen recently
+  // so it picks something fresh. "Recent" = last 5 critiques.
+  const recentLessons = S.fits
+    .slice()
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 5)
+    .map(f => f.lessonId)
+    .filter(Boolean);
+
+  const availablePrinciples = STYLE_PRINCIPLES.filter(p => !recentLessons.includes(p.id));
+  // If we've cycled through all of them, allow re-use (preferring stalest first)
+  const principlePool = availablePrinciples.length ? availablePrinciples : STYLE_PRINCIPLES;
+
+  // Constrain swap target_item_id to actual closet IDs — same trick as Shelf
+  const closetIds = S.closet.map(i => i.id);
+  const lessonIds = principlePool.map(p => p.id);
+
+  // Schema: structured critique with verdict, analysis bullets, a lesson, and swaps
+  const swapSchema = closetIds.length ? {
+    type: 'ARRAY',
+    items: {
+      type: 'OBJECT',
+      properties: {
+        replace_role:   { type: 'STRING', description: 'Which currently-worn piece to swap out — describe by role/position, e.g. "shirt", "shoes".' },
+        with_item_id:   { type: 'STRING', enum: closetIds },
+        reason:         { type: 'STRING' },
+      },
+      required: ['replace_role', 'with_item_id', 'reason']
+    }
+  } : { type: 'ARRAY', items: { type: 'OBJECT', properties: {} } };
+
+  const schema = {
+    type: 'OBJECT',
+    properties: {
+      verdict:    { type: 'STRING', enum: ['bad', 'ok', 'good'] },
+      headline:   { type: 'STRING', description: 'Single sentence summary of the fit, max 12 words.' },
+      currently_wearing: {
+        type: 'ARRAY',
+        items: { type: 'STRING' },
+        description: 'What the user is wearing in the selfie, in plain language. One string per item.'
+      },
+      analysis: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            principle: { type: 'STRING' },
+            observation: { type: 'STRING' },
+          },
+          required: ['principle', 'observation']
+        },
+        description: '2-4 specific observations grounded in style principles.'
+      },
+      lesson_id:   { type: 'STRING', enum: lessonIds },
+      lesson_title: { type: 'STRING', description: 'Short title for the principle being taught.' },
+      lesson_body:  { type: 'STRING', description: '2-3 sentences explaining the principle and how it applies to this fit. Educational, not prescriptive.' },
+      swaps: swapSchema,
+    },
+    required: ['verdict', 'headline', 'currently_wearing', 'analysis', 'lesson_id', 'lesson_title', 'lesson_body']
+  };
+
+  const principleHints = principlePool.map(p => `- ${p.id}: ${p.label} — ${p.gist}`).join('\n');
+
+  const prompt = `You are a style coach analyzing a mirror selfie. Your job is to TEACH style principles, not dictate outfits.
+
+The user's closet (referenced by ID — only use these IDs for swap suggestions):
+${JSON.stringify(closetForPrompt, null, 2)}
+
+Style principles you can teach (pick ONE that fits this fit best — these are the ones the user has NOT seen recently):
+${principleHints}
+
+Instructions:
+1. Identify what they're actually wearing from the selfie. List each piece in "currently_wearing".
+2. Verdict: 'bad' = the fit has a clear, fixable problem; 'ok' = competent but unremarkable; 'good' = the fit is working.
+3. Analysis: 2-4 specific observations. Each one names a style principle and describes what you SEE in this specific photo. Be concrete ("the shirt breaks at the widest point of your hip, cutting your silhouette in half") not generic ("the proportions could be better").
+4. Lesson: pick ONE principle from the available pool. lesson_id MUST match one of the enum values. Write a lesson_body that explains the underlying principle so the user learns to see it themselves next time. 2-3 sentences. Teacher tone, not prescriptive.
+5. Swaps: ${closetIds.length ? 'suggest 0-2 swaps using ONLY item IDs from the closet above. with_item_id must exactly match a closet ID. If no swap genuinely improves the fit, return an empty array.' : 'closet is empty — return an empty array.'}
+
+Do not invent items. Do not suggest buying anything. Work only with what they own.`;
+
+  const result = await callGemini([
+    { text: prompt },
+    { inlineData: { mimeType: 'image/jpeg', data: dataURLToBase64(selfieDataURL) } }
+  ], schema, 'medium');
+
+  // Pack into a FitRating record
+  return {
+    id: uid(),
+    ts: Date.now(),
+    image: selfieDataURL,
+    verdict: result.verdict,
+    headline: result.headline,
+    currentlyWearing: result.currently_wearing || [],
+    analysis: result.analysis || [],
+    lessonId: result.lesson_id,
+    lessonTitle: result.lesson_title,
+    lessonBody: result.lesson_body,
+    swaps: result.swaps || [],
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FIT RESULT RENDER
+// ═══════════════════════════════════════════════════════════════════
+function renderFitResultHTML(fit) {
+  const v = fit.verdict || 'ok';
+  const wearing = (fit.currentlyWearing || []).map(w => `<li style="font-size:14px; color:var(--text-2); margin-bottom:2px;">${esc(w)}</li>`).join('');
+  const analysis = (fit.analysis || []).map(a => `
+    <div class="analysis-item">
+      <div class="analysis-key">${esc(a.principle)}</div>
+      <div class="analysis-val">${esc(a.observation)}</div>
+    </div>`).join('');
+
+  const swapsHTML = (fit.swaps || []).map(sw => {
+    const target = S.closet.find(c => c.id === sw.with_item_id);
+    if (!target) return '';
+    const thumb = target.image
+      ? `<img src="${target.image}">`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px;font-weight:700;">${esc(TYPES[target.type]?.label || '?')}</div>`;
+    return `
+      <div class="swap-card">
+        <div class="swap-arrow">⇢</div>
+        <div class="swap-thumb">${thumb}</div>
+        <div class="swap-body">
+          <div class="swap-name">Replace ${esc(sw.replace_role)} → ${esc(target.name)}</div>
+          <div class="swap-reason">${esc(sw.reason)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="display:flex; flex-direction:column; gap:14px; margin-top:8px;">
+      <div class="verdict-card">
+        <div class="verdict-eyebrow">Critique</div>
+        <div class="verdict-headline ${v}">${esc(fit.headline)}</div>
+        ${wearing ? `<div class="field-label" style="margin-top:8px;">Wearing</div><ul style="list-style:none; padding-left:0;">${wearing}</ul>` : ''}
+      </div>
+
+      <div class="verdict-card">
+        <div class="verdict-eyebrow">Why</div>
+        <div class="analysis-list">${analysis}</div>
+      </div>
+
+      <div class="lesson-card">
+        <div class="lesson-eyebrow">Today's principle</div>
+        <div class="lesson-title">${esc(fit.lessonTitle)}</div>
+        <div class="lesson-body">${esc(fit.lessonBody)}</div>
+      </div>
+
+      ${swapsHTML ? `
+        <div>
+          <div class="field-label" style="padding-left: 22px; margin-top: 6px;">Suggested swaps</div>
+          <div class="swap-list">${swapsHTML}</div>
+        </div>` : ''}
+
+      <button class="btn-secondary" id="btn-done-critique" style="margin-top:8px;">Done</button>
+    </div>`;
+}
+
+function attachFitResultHandlers(fit) {
+  document.getElementById('btn-done-critique')?.addEventListener('click', () => {
+    closeView('view-capture');
+    setScreen('history');
+  });
+}
+
+function showFitDetail(fit) {
+  // Reuse the capture view shell to show a saved fit
+  S.captureMode = 'fit';
+  S.capturedImage = fit.image;
+  openView('view-capture');
+  document.getElementById('capture-title').textContent = 'Saved critique';
+  document.getElementById('capture-mode-toggle').style.display = 'none';
+  const zone = document.getElementById('photo-zone');
+  zone.classList.add('has-image');
+  zone.innerHTML = `<img src="${fit.image}">`;
+  document.getElementById('btn-capture-action').style.display = 'none';
+  document.getElementById('capture-output').innerHTML = renderFitResultHTML(fit);
+  attachFitResultHandlers(fit);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BULK CONFIRM
+// ═══════════════════════════════════════════════════════════════════
+function openBulkConfirm() {
+  const body = document.getElementById('bulk-confirm-body');
+  body.innerHTML = '';
+
+  const intro = document.createElement('div');
+  intro.style.cssText = 'font-size:14px; color:var(--text-3); margin-bottom: 6px; line-height: 1.5;';
+  intro.textContent = `Found ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}. Edit any details, then save them all to your closet.`;
+  body.appendChild(intro);
+
+  S.bulkDraftItems.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'bulk-item';
+    card.dataset.idx = idx;
+    const letter = item.name?.[0]?.toUpperCase() || '?';
+    card.innerHTML = `
+      <div class="bulk-thumb">
+        <div class="bulk-thumb-letter">${letter}</div>
+      </div>
+      <div class="bulk-form">
+        <input class="bulk-name" placeholder="Name" value="${esc(item.name || '')}">
+        <input class="bulk-color" placeholder="Color" value="${esc(item.color || '')}">
+        <div class="type-mini">
+          ${['top','bottom','outer','shoe','acc'].map(t => `<button data-t="${t}" class="${t === item.type ? 'sel' : ''}">${TYPES[t].label}</button>`).join('')}
+        </div>
+      </div>
+      <button class="bulk-remove" title="Remove">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+
+    card.querySelector('.bulk-name').addEventListener('input', e => { S.bulkDraftItems[idx].name = e.target.value; });
+    card.querySelector('.bulk-color').addEventListener('input', e => { S.bulkDraftItems[idx].color = e.target.value; });
+    card.querySelectorAll('.type-mini button').forEach(b => {
+      b.addEventListener('click', () => {
+        S.bulkDraftItems[idx].type = b.dataset.t;
+        card.querySelectorAll('.type-mini button').forEach(x => x.classList.toggle('sel', x.dataset.t === b.dataset.t));
+      });
+    });
+    card.querySelector('.bulk-remove').addEventListener('click', () => {
+      S.bulkDraftItems.splice(idx, 1);
+      openBulkConfirm();
+    });
+
+    body.appendChild(card);
+  });
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-primary';
+  saveBtn.textContent = `Save ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}`;
+  saveBtn.style.marginTop = '8px';
+  saveBtn.addEventListener('click', () => {
+    S.bulkDraftItems.forEach(it => S.closet.push(it));
+    persist();
+    toast(`Added ${S.bulkDraftItems.length} item${S.bulkDraftItems.length === 1 ? '' : 's'}`);
+    S.bulkDraftItems = [];
+    closeView('view-bulk-confirm');
+    setScreen('closet');
+  });
+  body.appendChild(saveBtn);
+
+  openView('view-bulk-confirm');
+}
+
+document.getElementById('btn-close-bulk').addEventListener('click', () => {
+  S.bulkDraftItems = [];
+  closeView('view-bulk-confirm');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// ITEM DETAIL SHEET
+// ═══════════════════════════════════════════════════════════════════
+function openItemSheet(item, isNew = false) {
+  S.editingItem = { ...item, _isNew: isNew };
+  S.selectedType = item.type || 'top';
+
+  document.getElementById('item-sheet-title').textContent = isNew ? 'New item' : (item.name || 'Item');
+  document.getElementById('item-sheet-sub').textContent = isNew ? 'Confirm details' : `${TYPES[item.type]?.label || ''}${item.color ? ' · ' + item.color : ''}`;
+
+  const imgEl = document.getElementById('item-sheet-img');
+  const wrap = document.getElementById('item-sheet-thumb');
+  if (item.image) {
+    imgEl.src = item.image;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+
+  document.getElementById('item-name').value      = item.name || '';
+  document.getElementById('item-color').value     = item.color || '';
+  document.getElementById('item-fit').value       = item.fit || '';
+  document.getElementById('item-fabric').value    = item.fabric || '';
+  document.getElementById('item-formality').value = item.formality || '';
+  document.getElementById('item-notes').value     = item.notes || '';
+
+  document.querySelectorAll('#item-type-seg .tseg').forEach(b => {
+    b.className = 'tseg';
+    if (b.dataset.t === S.selectedType) b.classList.add('sel-' + S.selectedType);
+  });
+
+  document.getElementById('item-delete-wrap').style.display = isNew ? 'none' : 'block';
+  document.getElementById('btn-save-item').textContent = isNew ? 'Add to closet' : 'Save';
+
+  openSheet('sheet-item');
+}
+
+document.getElementById('item-type-seg').addEventListener('click', e => {
+  const btn = e.target.closest('.tseg');
+  if (!btn) return;
+  S.selectedType = btn.dataset.t;
+  document.querySelectorAll('#item-type-seg .tseg').forEach(b => {
+    b.className = 'tseg';
+    if (b.dataset.t === S.selectedType) b.classList.add('sel-' + S.selectedType);
+  });
+});
+
+document.getElementById('btn-save-item').addEventListener('click', () => {
+  if (!S.editingItem) return;
+  const isNew = S.editingItem._isNew;
+  const updated = {
+    id: S.editingItem.id || uid(),
+    type: S.selectedType,
+    name: document.getElementById('item-name').value.trim(),
+    color: document.getElementById('item-color').value.trim(),
+    fit: document.getElementById('item-fit').value.trim(),
+    fabric: document.getElementById('item-fabric').value.trim(),
+    formality: document.getElementById('item-formality').value.trim(),
+    notes: document.getElementById('item-notes').value.trim(),
+    image: S.editingItem.image || '',
+    dateAdded: S.editingItem.dateAdded || Date.now(),
+  };
+  if (!updated.name) { toast('Give the item a name'); return; }
+
+  if (isNew) {
+    S.closet.push(updated);
+  } else {
+    const idx = S.closet.findIndex(i => i.id === updated.id);
+    if (idx > -1) S.closet[idx] = updated;
+  }
+  persist();
+  closeSheet('sheet-item');
+  S.editingItem = null;
+  toast(isNew ? 'Added to closet' : 'Saved');
+  render();
+});
+
+document.getElementById('btn-delete-item').addEventListener('click', () => {
+  if (!S.editingItem || S.editingItem._isNew) return;
+  if (!confirm('Remove this item from your closet?')) return;
+  S.closet = S.closet.filter(i => i.id !== S.editingItem.id);
+  persist();
+  closeSheet('sheet-item');
+  S.editingItem = null;
+  toast('Removed');
+  render();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('set-theme').value = getSetting('theme') || 'auto';
+  document.getElementById('set-gemini-key').value = getSetting('geminiKey') || '';
+  renderLessonState();
+  openView('view-settings');
+});
+document.getElementById('btn-close-settings').addEventListener('click', () => closeView('view-settings'));
+
+document.getElementById('set-theme').addEventListener('change', e => {
+  setSetting('theme', e.target.value);
+  applyTheme();
+});
+
+document.getElementById('btn-save-gemini').addEventListener('click', () => {
+  const key = document.getElementById('set-gemini-key').value.trim();
+  setSetting('geminiKey', key);
+  toast(key ? 'API key saved' : 'API key cleared');
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ closet: S.closet, fits: S.fits }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'fit-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported');
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('import-input').click();
+});
+document.getElementById('import-input').addEventListener('change', e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      const closetIds = new Set(S.closet.map(i => i.id));
+      const fitIds = new Set(S.fits.map(f => f.id));
+      (d.closet || []).forEach(i => { if (!closetIds.has(i.id)) S.closet.push(i); });
+      (d.fits || []).forEach(f => { if (!fitIds.has(f.id)) S.fits.push(f); });
+      persist();
+      toast('Imported');
+      render();
+    } catch(err) { toast('Import failed — invalid file'); }
+  };
+  r.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('btn-clear-data').addEventListener('click', () => {
+  if (!confirm('Wipe all closet items and history? This cannot be undone.')) return;
+  S.closet = []; S.fits = [];
+  persist();
+  toast('Cleared');
+  closeView('view-settings');
+  render();
+});
+
+function renderLessonState() {
+  const el = document.getElementById('lesson-state');
+  el.innerHTML = '';
+  const recentLessons = S.fits.slice().sort((a,b)=>b.ts-a.ts).slice(0,5).map(f=>f.lessonId);
+  const recentCounts = {};
+  recentLessons.forEach(id => { if (id) recentCounts[id] = (recentCounts[id]||0) + 1; });
+
+  STYLE_PRINCIPLES.forEach(p => {
+    const count = recentCounts[p.id] || 0;
+    const stale = !count;
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:0.5px solid var(--border); font-size:14px;`;
+    row.innerHTML = `
+      <span style="color:${stale ? 'var(--text-1)' : 'var(--text-3)'}; font-weight:${stale ? '600' : '500'};">${esc(p.label)}</span>
+      <span style="font-size:12px; color:var(--text-3); font-weight:600;">${stale ? 'Fresh' : `${count}× recent`}</span>`;
+    el.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════
+// PASTE THIS AT THE VERY BOTTOM INSTEAD:
+window.addEventListener('DOMContentLoaded', async () => {
+  applyTheme();
+  await loadData();
+  setScreen('closet');
+});
+</script>
+</body>
+</html>
