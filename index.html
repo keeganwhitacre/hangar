@@ -741,8 +741,12 @@
       <button class="chip type-chip" data-t="acc">Accessories</button>
     </div>
     
+    <div style="width: 100%; margin-top: 6px;">
+      <input class="field" id="outfit-vibe-prompt" placeholder="Where are you going? (e.g., bonfire with friends, casual date, cold office day)" style="font-size:13px; padding:8px 12px; border-radius:10px;">
+    </div>
+
     <button id="btn-generate-outfit-view" class="btn-secondary" style="width:100%; border-color:var(--accent); color:var(--accent); font-weight:700; font-size:13px; padding:8px; margin-top:4px;">
-      ✦ Auto-Generate Costumes & Outfits ⇢
+      ✦ Auto-Generate Situation Outfits ⇢
     </button>
   </div>
 
@@ -2498,8 +2502,11 @@ document.getElementById('btn-generate-outfit-view').onclick = () => generateOutf
 document.getElementById('btn-close-outfits').onclick = () => closeView('view-outfit-results');
 
 async function generateOutfitsEngine() {
-const profileVal = getSetting('userProfile') || "Adult of average height and balanced proportions";
-  // Extract and clean owned clothing items only
+  const profileVal = getSetting('userProfile') || "Standard adult frame requiring classic, balanced proportions";
+  
+  // NEW: Read the custom user prompt text field
+  const vibePromptVal = document.getElementById('outfit-vibe-prompt')?.value.trim() || "A casual, well-balanced everyday look";
+
   const ownedCloset = S.closet.filter(i => !i.isWishlist).map(i => ({
     id: i.id,
     type: i.type,
@@ -2516,7 +2523,7 @@ const profileVal = getSetting('userProfile') || "Adult of average height and bal
   }
 
   const body = document.getElementById('outfit-results-body');
-  body.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Mixing colors, textures, and proportions...</div></div>`;
+  body.innerHTML = `<div class="loading-status"><div class="spinner"></div><div class="loading-label">Assembling combinations for your event...</div></div>`;
   openView('view-outfit-results');
 
   const schema = {
@@ -2542,9 +2549,15 @@ const profileVal = getSetting('userProfile') || "Adult of average height and bal
     required: ['outfits']
   };
 
-  const prompt = `You are a professional capsule wardrobe designer. Look at the user's available physical inventory items below and synthesize exactly 3 distinct outfit combinations. 
+  const prompt = `You are a professional capsule wardrobe designer building customized looks for an individual.
   
-  Each outfit must combine matching item IDs logically based on shape weight, color anchors, and tone registries.
+  TARGET USER PROFILE:
+  - Frame & Proportions: ${profileVal}
+  
+  MANDATORY SITUATION/EVENT CONTEXT:
+  - The user has provided this exact prompt describing their event: "${vibePromptVal}"
+  
+  Look through the user's available physical inventory items below and synthesize exactly 3 distinct outfit combinations. Ensure every outfit is physically functional, thermally appropriate, and socially calibrated specifically for the provided Situation/Event context.
   
   Available Items:
   ${JSON.stringify(ownedCloset, null, 2)}`;
