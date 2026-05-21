@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'fit-cache-v2';
+const CACHE_NAME = 'fit-cache-v3';
 
 // Force immediate activation when a new script is detected
 self.addEventListener('install', (event) => {
